@@ -1,0 +1,13 @@
+{
+  "adapter": "auto",
+  "autoDetect": ["codebuddy", "cbc", "claude", "codex"],
+  "timeoutMs": 600000,
+  "permissions": "skip",
+  "outputFormat": "text",
+  "plain": {
+    "command": "",
+    "promptMode": "arg",
+    "extraArgs": [],
+    "_comment": "adapter=plain 时必填 command，如 'aider --message'。promptMode: arg=提示词作为最后一个参数；stdin=提示词写入标准输入。extraArgs 会插在提示词之前。"
+  }
+}

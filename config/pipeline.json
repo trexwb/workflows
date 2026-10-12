@@ -1,0 +1,73 @@
+{
+  "project": {
+    "name": "{projectName}",
+    "dir": "{projectDir}"
+  },
+  "cli": {
+    "command": "auto",
+    "timeoutMs": 600000,
+    "permissions": "skip",
+    "outputFormat": "text"
+  },
+  "stages": [
+    {
+      "id": "01-product-plan",
+      "name": "产品规划",
+      "agent": "product-manager",
+      "promptFile": "prompts/01-product-plan.md",
+      "input": ["artifacts/00-requirement.md"],
+      "output": "artifacts/01-prd.md",
+      "confirm": true
+    },
+    {
+      "id": "02-requirements",
+      "name": "需求拆解",
+      "agent": "product-manager",
+      "promptFile": "prompts/02-requirements.md",
+      "input": ["artifacts/01-prd.md"],
+      "output": "artifacts/02-tasks.md",
+      "confirm": true
+    },
+    {
+      "id": "03-architecture",
+      "name": "架构设计",
+      "agent": "architect",
+      "promptFile": "prompts/03-architecture.md",
+      "input": ["artifacts/01-prd.md", "artifacts/02-tasks.md"],
+      "output": "artifacts/03-architecture.md"
+    },
+    {
+      "id": "04-develop",
+      "name": "开发编码",
+      "agent": "developer",
+      "promptFile": "prompts/04-develop.md",
+      "input": ["artifacts/02-tasks.md", "artifacts/03-architecture.md"],
+      "output": null
+    },
+    {
+      "id": "05-code-review",
+      "name": "代码审查",
+      "agent": "code-reviewer",
+      "promptFile": "prompts/05-code-review.md",
+      "input": ["artifacts/03-architecture.md"],
+      "output": "artifacts/05-review.md"
+    },
+    {
+      "id": "06-test",
+      "name": "测试",
+      "agent": "tester",
+      "promptFile": "prompts/06-test.md",
+      "input": ["artifacts/02-tasks.md", "artifacts/05-review.md"],
+      "output": "artifacts/06-test-report.md"
+    },
+    {
+      "id": "07-deploy",
+      "name": "部署",
+      "agent": "devops",
+      "promptFile": "prompts/07-deploy.md",
+      "input": ["artifacts/05-review.md", "artifacts/06-test-report.md"],
+      "output": "artifacts/07-deploy.md",
+      "model": "hy3"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "project": {
+    "name": "{projectName}",
+    "dir": "{projectDir}"
+  },
+  "cli": {
+    "command": "auto",
+    "timeoutMs": 600000,
+    "permissions": "skip",
+    "outputFormat": "text"
+  },
+  "stages": [
+    {
+      "id": "01-issue-analysis",
+      "name": "Issue 分析",
+      "agent": "code-reviewer",
+      "promptFile": "prompts/issue-01-analysis.md",
+      "input": [],
+      "output": "artifacts/issue-analysis.md"
+    },
+    {
+      "id": "02-fix-plan",
+      "name": "修复方案设计",
+      "agent": "architect",
+      "promptFile": "prompts/issue-02-fix-plan.md",
+      "input": ["artifacts/issue-analysis.md"],
+      "output": "artifacts/issue-fix-plan.md"
+    },
+    {
+      "id": "03-fix-dev",
+      "name": "开发修复",
+      "agent": "developer",
+      "promptFile": "prompts/issue-03-fix-dev.md",
+      "input": ["artifacts/issue-analysis.md", "artifacts/issue-fix-plan.md"],
+      "output": "artifacts/issue-fix-done.md"
+    },
+    {
+      "id": "04-fix-test",
+      "name": "修复验证",
+      "agent": "tester",
+      "promptFile": "prompts/issue-04-fix-test.md",
+      "input": ["artifacts/issue-analysis.md", "artifacts/issue-fix-plan.md", "artifacts/issue-fix-done.md"],
+      "output": "artifacts/issue-test-report.md"
+    },
+    {
+      "id": "05-pr-summary",
+      "name": "PR 描述",
+      "agent": "devops",
+      "promptFile": "prompts/issue-05-pr-summary.md",
+      "input": ["artifacts/issue-analysis.md", "artifacts/issue-fix-plan.md", "artifacts/issue-fix-done.md", "artifacts/issue-test-report.md"],
+      "output": "artifacts/issue-pr.md"
+    }
+  ]
+}

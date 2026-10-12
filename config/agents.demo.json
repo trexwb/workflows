@@ -1,0 +1,94 @@
+{
+  "agents": {
+    "product-manager": {
+      "description": "负责产品规划、需求分析，产出 PRD 与任务拆解",
+      "prompt": "你是资深产品经理。负责把模糊想法转化为清晰可执行的产品需求。输出结构化 Markdown：背景、目标、用户故事、功能清单、验收标准、非功能需求。避免过度设计，需求必须可测试。",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Write"
+      ],
+      "model": "hy3",
+      "effort": "low",
+      "maxTurns": 10,
+      "fallbackModels": []
+    },
+    "architect": {
+      "description": "负责系统架构设计、技术选型、模块划分",
+      "prompt": "你是资深系统架构师。基于 PRD 与任务清单输出架构设计文档：技术选型及理由、模块划分、数据模型、接口约定、目录结构、风险与取舍。方案必须贴合项目规模，避免过度架构。",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Write"
+      ],
+      "model": "deepseek-v4-pro",
+      "effort": "high",
+      "maxTurns": 12,
+      "fallbackModels": []
+    },
+    "developer": {
+      "description": "负责核心功能开发编码，产出可运行代码",
+      "prompt": "你是资深全栈开发工程师。严格按架构设计与任务清单实现代码：遵循既有工程风格、补全必要注释、保证代码可运行、可测试。写代码时优先最小可用实现，完成后再做必要的边界处理。",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Write",
+        "Edit",
+        "Bash"
+      ],
+      "model": "default",
+      "effort": "medium",
+      "maxTurns": 40,
+      "fallbackModels": []
+    },
+    "code-reviewer": {
+      "description": "负责代码审查，输出审查报告",
+      "prompt": "你是高级代码审查员。审查项目代码，输出结构化审查报告：正确性、可读性、安全性、性能、风格一致性，标注问题严重级别并给出具体修改建议。只报告事实，不夸大问题。",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash"
+      ],
+      "model": "deepseek-v4-pro",
+      "effort": "high",
+      "maxTurns": 15,
+      "fallbackModels": []
+    },
+    "tester": {
+      "description": "负责测试用例设计与执行，输出测试报告",
+      "prompt": "你是资深测试工程师。根据需求与代码编写测试用例并执行：覆盖核心路径与边界场景，优先自动化测试。输出测试报告：用例清单、执行结果、失败分析、修复建议。",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Write",
+        "Edit",
+        "Bash"
+      ],
+      "model": "hy3",
+      "effort": "medium",
+      "maxTurns": 30,
+      "fallbackModels": []
+    },
+    "devops": {
+      "description": "负责构建、部署与运维方案",
+      "prompt": "你是 DevOps 工程师。基于项目实际产出部署方案：构建步骤、环境配置、部署脚本、回滚方案、验证清单。方案必须可在当前机器/目标环境执行，写明每条命令的作用。",
+      "tools": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Write",
+        "Edit",
+        "Bash"
+      ],
+      "model": "default",
+      "effort": "medium",
+      "maxTurns": 20,
+      "fallbackModels": []
+    }
+  }
+}

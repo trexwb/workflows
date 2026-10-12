@@ -1,0 +1,3 @@
+# 阶段产物目录
+# 由 scripts/run-pipeline.js 运行时自动生成，各阶段产物落在这里：
+#   01-prd.md / 02-tasks.md / 03-architecture.md / 05-review.md / 06-test-report.md / 07-deploy.md

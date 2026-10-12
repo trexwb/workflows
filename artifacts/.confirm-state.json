@@ -1,0 +1,10 @@
+{
+  "projectName": "node-demo",
+  "projectDir": "D:\\nodejs\\code\\node-demo",
+  "stageId": "02-requirements",
+  "stageName": "需求拆解",
+  "output": "artifacts/02-tasks.md",
+  "nextStageId": "03-architecture",
+  "action": "pending",
+  "updatedAt": "2026-10-10T07:14:52.167Z"
+}
