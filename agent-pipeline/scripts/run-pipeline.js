@@ -55,7 +55,7 @@ function usage() {
   --project-name <n>    必填。项目名，注入各阶段 prompt 的 {projectName}
   --project-dir <dir>   项目代码目录（开发/测试/部署阶段的工作目录）
   --project-root <dir>  项目根目录；--project-dir 缺省时取 <project-root>/<project-name>，默认当前目录
-  --work-dir <dir>      工作目录：artifacts/、logs/ 与自定义模板/配置的根，默认 skill 根目录
+  --work-dir <dir>      工作目录：artifacts/、logs/ 与自定义模板/配置的根，默认当前目录
   --from <stageId>      起始阶段 id，默认第一个阶段
   --to <stageId>        结束阶段 id，默认最后一个阶段
   --interactive         交互模式：confirm 阶段产出后暂停审阅，可输入修订意见重跑
@@ -75,17 +75,18 @@ function main() {
   const projectName = args['project-name'];
   if (!projectName) { usage(); process.exit(1); }
 
-  const workRoot = path.resolve(args['work-dir'] || ROOT);
+  // 工作目录：artifacts/logs/确认状态的根；默认当前目录，与 skill 安装目录分离（安装目录可只读）
+  const workRoot = path.resolve(args['work-dir'] || process.cwd());
   const projectRoot = args['project-root'] || process.cwd();
   const projectDir = args['project-dir'] || path.join(projectRoot, projectName);
   fs.mkdirSync(projectDir, { recursive: true });
 
-  // 资产解析：内置（skill 根）优先，允许工作目录覆盖同名模板/配置
+  // 资产解析：--work-dir 下的同名模板/配置优先（允许运行时定制覆盖），其次 skill 内置资产
   const resolveAsset = (rel) => {
     if (path.isAbsolute(rel)) return rel;
-    const inSkill = path.join(ROOT, rel);
-    if (fs.existsSync(inSkill)) return inSkill;
-    return path.join(workRoot, rel);
+    const inWork = path.join(workRoot, rel);
+    if (fs.existsSync(inWork)) return inWork;
+    return path.join(ROOT, rel);
   };
   // 产物路径：始终基于工作目录（跨运行隔离、可移植）
   const resolveWork = (rel) => (path.isAbsolute(rel) ? rel : path.join(workRoot, rel));
@@ -163,28 +164,41 @@ function main() {
   log(`开始流水线：${projectName} @ ${projectDir}（阶段 ${fromId} → ${toId}${dryRun ? '，演练模式' : ''}）`);
 
   // 交互确认：审阅阶段产物，可输入修改意见让 agent 重跑该阶段
-  function askUser(stage) {
+  // 实现说明：readline 的 question 是一次性注册，若输入行在下一个 question 注册前到达（管道/expect
+  // 一次性喂入、或 agent 自动驱动）会被丢弃。改为常驻 line 监听 + 行队列，任意节奏到达都不丢。
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const lineQueue = [];
+  let lineWaiter = null;
+  rl.on('line', (line) => {
+    if (lineWaiter) { const w = lineWaiter; lineWaiter = null; w(line); }
+    else lineQueue.push(line);
+  });
+  function nextLine() {
     return new Promise((resolve) => {
-      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-      console.log(`\n===== 阶段 ${stage.id}（${stage.name}）产物预览 =====`);
-      if (stage.output) {
-        const outAbs = resolveWork(stage.output);
-        if (fs.existsSync(outAbs)) {
-          const content = fs.readFileSync(outAbs, 'utf8');
-          console.log(content.length > 3000 ? content.slice(0, 3000) + `\n...(截断，完整见 ${stage.output})` : content);
-        }
-      }
-      rl.question('\n[y] 确认继续  |  输入修改意见（多行，以 !done 结束）\n> ', (first) => {
-        if (first.trim() === 'y') { rl.close(); resolve({ action: 'continue' }); return; }
-        const lines = [first];
-        rl.setPrompt('> ');
-        rl.prompt();
-        rl.on('line', (line) => {
-          if (line.trim() === '!done') { rl.close(); resolve({ action: 'amend', text: lines.join('\n').trim() }); }
-          else { lines.push(line); rl.prompt(); }
-        });
-      });
+      if (lineQueue.length) resolve(lineQueue.shift());
+      else lineWaiter = resolve;
     });
+  }
+  async function askUser(stage) {
+    console.log(`\n===== 阶段 ${stage.id}（${stage.name}）产物预览 =====`);
+    if (stage.output) {
+      const outAbs = resolveWork(stage.output);
+      if (fs.existsSync(outAbs)) {
+        const content = fs.readFileSync(outAbs, 'utf8');
+        console.log(content.length > 3000 ? content.slice(0, 3000) + `\n...(截断，完整见 ${stage.output})` : content);
+      }
+    }
+    process.stdout.write('\n[y] 确认继续  |  输入修改意见（多行，以 !done 结束）\n> ');
+    const first = await nextLine();
+    if (first.trim() === 'y') { return { action: 'continue' }; }
+    const lines = [first];
+    process.stdout.write('> ');
+    for (;;) {
+      const line = await nextLine();
+      if (line.trim() === '!done') { return { action: 'amend', text: lines.join('\n').trim() }; }
+      lines.push(line);
+      process.stdout.write('> ');
+    }
   }
 
   // 执行单个阶段：组装 prompt → 经适配器调用 CLI → 产物落盘；限额/过载自动切换模型重跑
@@ -325,6 +339,7 @@ function main() {
       if (initOnly && stage.confirm) {
         const nextId = i + 1 <= endIdx ? stages[i + 1].id : null;
         log(`[${stage.id}] 交互引导结束（--init-only）`);
+        rl.close();
         console.log(nextId
           ? `\n需求已确认。继续自动执行：node scripts/run-pipeline.js --project-name ${projectName} --project-dir "${projectDir}" --from ${nextId}`
           : '\n需求已确认，流水线完成。');
@@ -332,6 +347,7 @@ function main() {
       }
     }
     log(`流水线完成：${projectName}`);
+    rl.close();
     console.log('\n全部阶段执行完毕。产物见 artifacts/，日志见 logs/pipeline.log');
   })().catch((e) => { console.error(e); process.exit(1); });
 }

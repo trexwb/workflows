@@ -41,13 +41,15 @@ agent-pipeline/
 │   ├── init-project.js      # git 拉取项目（优先 DEV 系分支）
 │   └── watch-issues.js      # GitHub Issue 监听 → 自动触发修复流
 ├── prompts/                 # 13 个阶段提示词模板（占位符 {projectName}/{projectDir}/{userNeed}）
-├── artifacts/               # 运行时产物
-└── logs/                    # 运行日志 pipeline.log
+└── references/
+    └── remote-confirm.md    # 远程确认协议（exit 42 状态文件 schema 与外部 agent 驱动循环）
 ```
+
+> 运行时产物（artifacts/）与日志（logs/）默认写入**当前目录**（可用 `--work-dir` 指定），不污染 skill 安装目录。
 
 ## 快速开始
 
-前置：Node.js >= 16；已安装并登录任一受支持 CLI（如 `npm install -g @tencent-ai/codebuddy-code` 后执行 `codebuddy` 完成登录）。
+前置：Node.js >= 18；已安装并登录任一受支持 CLI（如 `npm install -g @tencent-ai/codebuddy-code` 后执行 `codebuddy` 完成登录）。
 
 ```bash
 cd agent-pipeline
@@ -70,6 +72,7 @@ node scripts/run-pipeline.js --project-name demo-app --from 04-develop --to 06-t
 
 # 5. 远程确认：confirm 阶段产出后写 artifacts/.confirm-state.json 并 exit 42，
 #    由外部（IM 机器人等）转述产物、收集确认/意见，再以 --from <下一阶段> 或 --from <当前> --amend "<意见>" 续跑
+#    协议细节（状态文件 schema、驱动循环、对话话术映射）见 references/remote-confirm.md
 node scripts/run-pipeline.js --project-name demo-app --remote
 ```
 
@@ -97,7 +100,7 @@ node scripts/watch-issues.js --daemon      # 常驻轮询
 | `--project-name` | 项目名，注入 prompt 的 `{projectName}` | 必填 |
 | `--project-dir` | 项目代码目录（开发/测试/部署的工作目录） | `<project-root>/<project-name>` |
 | `--project-root` | 项目根目录 | 当前目录 |
-| `--work-dir` | artifacts/logs 与自定义模板/配置的根 | skill 根目录 |
+| `--work-dir` | 工作目录：artifacts/、logs/ 与自定义模板/配置的根 | 当前目录 |
 | `--from` / `--to` | 起止阶段 id | 首/末阶段 |
 | `--interactive` | confirm 阶段产出后暂停审阅，可回灌修订意见 | false |
 | `--remote` | confirm 阶段产出后写状态文件并 exit 42 | false |
@@ -134,3 +137,7 @@ node scripts/watch-issues.js --daemon      # 常驻轮询
 3. **产物上下文**：每阶段自动把 `input` 指定的产物全文拼进 prompt；缺失仅告警不中断。
 4. **Windows**：npm 全局 `.cmd` 包装器会自动改为 node 直跑 JS 入口，规避 spawn EINVAL 与 shell 转义问题。
 5. **退出码**：0 成功；1 配置/CLI 错误；2 阶段执行失败；42 远程确认挂起（REMOTE_CONFIRM_NEEDED）。
+
+## 版本
+
+1.0.0（以仓库根 package.json 为准）

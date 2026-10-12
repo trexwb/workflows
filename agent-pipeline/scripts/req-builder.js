@@ -39,6 +39,10 @@ function parseArgs(argv) {
   return args;
 }
 
+// 工作目录：artifacts/logs 与运行状态的根，默认当前目录（与 skill 安装目录分离）
+const ARGS = parseArgs(process.argv.slice(2));
+const WORK_ROOT = path.resolve(ARGS['work-dir'] || process.cwd());
+
 // ---------- 引导模板 ----------
 const GUIDE = [
   '请按以下格式描述你的需求（每条一行，缺项可写"无/待定"，信息越具体越好）：',
@@ -66,7 +70,7 @@ function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}`;
   console.log(line);
   try {
-    const logsDir = path.join(ROOT, 'logs');
+    const logsDir = path.join(WORK_ROOT, 'logs');
     fs.mkdirSync(logsDir, { recursive: true });
     fs.appendFileSync(path.join(logsDir, 'pipeline.log'), line + '\n');
   } catch (e) { /* 日志失败不中断 */ }
@@ -74,7 +78,7 @@ function log(msg) {
 
 // ---------- 主流程 ----------
 function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const args = ARGS;
   const dryRun = !!args['dry-run'];
   const remote = !!args['remote'];
 
@@ -86,7 +90,10 @@ function main() {
   if (args.build) {
     const needText = String(args.build);
     if (!needText.trim()) { console.error('错误：--build 需要需求文本'); process.exit(1); }
-    const templateFile = path.join(ROOT, 'prompts', 'req-builder.md');
+    // 模板解析：--work-dir 下同名文件优先，其次 skill 内置
+    const builtinTemplate = path.join(ROOT, 'prompts', 'req-builder.md');
+    const workTemplate = path.join(WORK_ROOT, 'prompts', 'req-builder.md');
+    const templateFile = fs.existsSync(workTemplate) ? workTemplate : builtinTemplate;
     if (!fs.existsSync(templateFile)) { console.error('错误：缺少 prompts/req-builder.md'); process.exit(1); }
     const template = fs.readFileSync(templateFile, 'utf8').replace(/^---\r?\nAIGC:[\s\S]*?\r?\n---\r?\n/, '');
     if (template.indexOf('{userNeed}') === -1) { console.error('错误：模板缺少 {userNeed} 占位符'); process.exit(1); }
@@ -124,7 +131,7 @@ function main() {
       agentsJson: '{}',
       model,
       fallbackModel: fallback,
-      cwd: ROOT,
+      cwd: WORK_ROOT,
       timeoutMs: cliCfg.timeoutMs || 600000,
       permissions: cliCfg.permissions,
       outputFormat: cliCfg.outputFormat,
@@ -134,14 +141,14 @@ function main() {
       console.error('整理失败：' + errText.slice(0, 2000));
       process.exit(2);
     }
-    const outAbs = path.join(ROOT, 'artifacts', '00-need-refined.md');
+    const outAbs = path.join(WORK_ROOT, 'artifacts', '00-need-refined.md');
     fs.mkdirSync(path.dirname(outAbs), { recursive: true });
     fs.writeFileSync(outAbs, (result.stdout || '').trim() + '\n');
     log(`[req-builder] 双版本已写入 ${outAbs}`);
     console.log('\n双版本已生成：' + outAbs);
     console.log('请选择版本：node scripts/req-builder.js --select A（精简通用版）或 --select B（高阶顶配版）');
     if (remote) {
-      fs.writeFileSync(path.join(ROOT, 'artifacts', '.req-state.json'), JSON.stringify({ step: 'built', refined: outAbs, updatedAt: new Date().toISOString() }, null, 2));
+      fs.writeFileSync(path.join(WORK_ROOT, 'artifacts', '.req-state.json'), JSON.stringify({ step: 'built', refined: outAbs, updatedAt: new Date().toISOString() }, null, 2));
     }
     return;
   }
@@ -149,7 +156,7 @@ function main() {
   if (args.select) {
     const ver = String(args.select).trim().toUpperCase();
     const autoRun = !!args['auto-run'];
-    const refinedPath = path.join(ROOT, 'artifacts', '00-need-refined.md');
+    const refinedPath = path.join(WORK_ROOT, 'artifacts', '00-need-refined.md');
     if (!fs.existsSync(refinedPath)) { console.error('错误：未找到 ' + refinedPath + '，请先运行 --build'); process.exit(1); }
     const content = fs.readFileSync(refinedPath, 'utf8');
     const MARK_A = '===== 版本A：精简通用版 =====';
@@ -173,7 +180,7 @@ function main() {
     }
     if (!selected) { console.error('错误：选中版本内容为空'); process.exit(1); }
 
-    const reqAbs = path.join(ROOT, 'artifacts', '00-requirement.md');
+    const reqAbs = path.join(WORK_ROOT, 'artifacts', '00-requirement.md');
     fs.writeFileSync(reqAbs, '# 需求输入（用户确认版）\n\n' + selected + '\n');
     log(`[req-builder] 已选择版本${ver}，写入 ${reqAbs}`);
     console.log('\n需求已写入：' + reqAbs);
@@ -186,14 +193,14 @@ function main() {
       }
       log(`[req-builder] 自动续跑流水线：node scripts/run-pipeline.js ${runArgs.join(' ')}`);
       const pipelineScript = path.join(ROOT, 'scripts', 'run-pipeline.js');
-      const res = spawnSync(process.execPath, [pipelineScript].concat(runArgs), { encoding: 'utf8', timeout: 0, maxBuffer: 64 * 1024 * 1024, cwd: ROOT });
+      const res = spawnSync(process.execPath, [pipelineScript].concat(runArgs), { encoding: 'utf8', timeout: 0, maxBuffer: 64 * 1024 * 1024, cwd: WORK_ROOT });
       process.stdout.write(res.stdout || '');
       process.stderr.write(res.stderr || '');
       process.exit(res.status || 0);
     }
     console.log('继续执行流水线：node scripts/run-pipeline.js --project-name <项目名> --from 01-product-plan');
     if (remote) {
-      fs.writeFileSync(path.join(ROOT, 'artifacts', '.req-state.json'), JSON.stringify({ step: 'selected', version: ver, requirement: reqAbs, updatedAt: new Date().toISOString() }, null, 2));
+      fs.writeFileSync(path.join(WORK_ROOT, 'artifacts', '.req-state.json'), JSON.stringify({ step: 'selected', version: ver, requirement: reqAbs, updatedAt: new Date().toISOString() }, null, 2));
     }
     return;
   }

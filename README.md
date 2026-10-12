@@ -2,6 +2,22 @@
 
 通过 CodeBuddy Code CLI 的 `--agents` / `--agent` 能力，把"产品规划 → 需求拆解 → 架构设计 → 开发编码 → 代码审查 → 测试 → 部署"拆成多个阶段，每个阶段由**独立的子 Agent** 执行，每个 Agent 可配置**不同的模型**，阶段间通过 `artifacts/` 传递产物。
 
+## Agent Skill 安装与使用（v1.0.0 起，推荐）
+
+本仓库的编排能力已打包为标准 Agent Skill：**`agent-pipeline/`**，任何支持 Agent Skills 的助手/CLI 都可安装执行；分发件见 `dist/agent-pipeline.skill`。
+
+- **跨 CLI**：内置适配层自动探测并适配 CodeBuddy / Claude Code / Codex / 任意自定义命令（`config/cli.json`），零 npm 依赖，macOS / Linux / Windows 可用；
+- **跨平台默认值**：项目目录默认落在当前目录（`--project-root` 可覆盖），产物/日志写入运行目录或 `--work-dir`，不再依赖 `D:\nodejs\code`；
+- **可被程序驱动**：`--remote` 远程确认协议（exit 42 + 状态文件）让 IM 机器人或其他 agent 代你确认/修订，协议详见 `agent-pipeline/references/remote-confirm.md`。
+
+```bash
+# 安装：把 agent-pipeline/ 拷入目标 agent 的 skills 目录，或直接以仓库路径运行
+node agent-pipeline/scripts/run-pipeline.js --project-name demo-app --dry-run   # 演练
+node agent-pipeline/scripts/run-pipeline.js --project-name demo-app --remote    # 远程确认模式
+```
+
+> 下文根目录 `scripts/` 内的脚本是早期 Windows 专用版本，保留作参考；新用法请一律使用 `agent-pipeline/` 内的便携版。
+
 ## 编排原理
 
 ```

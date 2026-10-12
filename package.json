@@ -1,0 +1,9 @@
+{
+  "name": "agent-pipeline-workflows",
+  "version": "1.0.0",
+  "private": true,
+  "description": "多 CLI（CodeBuddy / Claude / Codex / 自定义命令）多 Agent 开发编排流水线，含可安装的 Agent Skill（agent-pipeline）",
+  "engines": {
+    "node": ">=18"
+  }
+}

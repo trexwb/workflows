@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# 运行时产物与日志（编排器每次运行生成，不入库；保留目录本身）
+artifacts/*
+!artifacts/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# watch-issues 状态数据
+data/
+
+# 打包输出
+dist/
+*.skill
+
+# 本地环境与密钥
+.env
+.env.*
+
+# 临时文件
+tmp/

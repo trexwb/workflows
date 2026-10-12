@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CLI 适配层 —— 让流水线编排器运行在任意 agent CLI 之上（零 npm 依赖，Node >= 16）
+ * CLI 适配层 —— 让流水线编排器运行在任意 agent CLI 之上（零 npm 依赖，Node >= 18）
  *
  * 内置适配器：
  *   codebuddy  CodeBuddy Code CLI（原生 --agent/--agents 多代理、--fallback-model 回退）
@@ -182,6 +182,7 @@ function claudeRunner() {
   function build(o) {
     const args = ['-p', o.prompt, '--output-format', 'text'];
     if (o.agentDef && o.agentDef.prompt) args.push('--append-system-prompt', o.agentDef.prompt);
+    if (o.agentDef && o.agentDef.maxTurns) args.push('--max-turns', String(o.agentDef.maxTurns));
     if (o.model && o.model !== 'auto') args.push('--model', o.model);
     if (o.permissions !== 'ask') args.push('--dangerously-skip-permissions');
     return args;
@@ -205,7 +206,8 @@ function codexRunner() {
     return 'codex';
   }
   function build(o) {
-    const args = ['exec'];
+    // --skip-git-repo-check：新项目目录尚未 git init 时，codex exec 默认会拒绝执行
+    const args = ['exec', '--skip-git-repo-check'];
     if (o.permissions !== 'ask') args.push('--full-auto');
     if (o.model && o.model !== 'auto') args.push('-m', o.model);
     args.push(roleHeader(o.agentDef) + o.prompt);
