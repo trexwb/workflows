@@ -112,16 +112,86 @@ node scripts/watch-issues.js --daemon      # 常驻轮询
 
 ## CLI 适配层
 
-选择顺序：环境变量 `AGENT_PIPELINE_ADAPTER` > `cli.json` 的 `adapter` > `autoDetect` 依次探测。
+编排器不绑定单一 CLI：`scripts/lib/adapter.js` 把统一的"prompt + 角色 + 模型"翻译成各 CLI 的参数，`scripts/run-pipeline.js` 每阶段只经这一层调用一次 CLI。
 
-| 适配器 | 角色注入方式 | 模型切换 | 说明 |
-|--------|--------------|----------|------|
-| `codebuddy` | `--agent` + `--agents`（原生多代理） | CLI 层 `--fallback-model` + 编排器重跑 | 工具白名单/effort/maxTurns 生效；`~/.codebuddy/models.json` 自定义模型自动进候选 |
-| `claude` | `--append-system-prompt` | 编排器重跑 | Claude Code CLI |
-| `codex` | 角色提示词拼入 prompt 头 | 编排器重跑 | `codex exec --full-auto` |
-| `plain` | 角色提示词拼入 prompt 头 | 不支持 | 任意命令：在 `cli.json` 填 `plain.command`（如 `"aider --message"`），`promptMode: arg|stdin` |
+### 适配器对比
 
-环境变量：`CODE_BUDDY_CMD` / `CLAUDE_CLI_CMD` / `CODEX_CLI_CMD` / `AGENT_CLI_CMD` 可覆盖各命令路径。
+| 适配器 | CLI 命令 | 角色注入方式 | 模型指定 | 限额回退 | 功能差异备注 |
+|--------|----------|--------------|----------|----------|--------------|
+| `codebuddy` | `codebuddy` | 原生 `--agent <id> --agents '<agents.json>'` | `--model <模型>`（值为 `auto` 时不传） | CLI 层 `--fallback-model <下一候选>` + 编排器换模型重跑 | 唯一支持工具白名单、`effort`、`maxTurns`；`~/.codebuddy/models.json` 自定义模型自动进候选；`permissions: skip` 时附 `--dangerously-skip-permissions` |
+| `cbc` | `cbc` | 同 `codebuddy` | 同 `codebuddy` | 同 `codebuddy` | CodeBuddy 的命令别名；探测命中 `cbc` 时归入 `codebuddy` 适配器，能力完全一致 |
+| `claude` | `claude` | `--append-system-prompt <角色提示词>`（无原生多代理） | `--model <模型>` | 仅编排器换模型重跑（无 CLI 回退参数） | Claude Code CLI；支持 `maxTurns`（转 `--max-turns`）；工具白名单 / `effort` 不生效 |
+| `codex` | `codex` | 角色提示词拼接进任务头部 | `-m <模型>` | 仅编排器换模型重跑 | 走 `codex exec --skip-git-repo-check`；`permissions: skip` 时附 `--full-auto`；不支持 `output-format`、工具白名单、`effort`、`maxTurns` |
+| `plain` | `plain.command` 配置的任意命令 | 角色提示词拼接进 prompt | 不支持 | 不支持 | 通用兜底；`promptMode` 决定提示词经参数或 stdin 传入 |
+
+> 实际调用参数以 `scripts/lib/adapter.js` 为准；上表只列各适配器真实支持的命令与参数。
+
+### 自动探测顺序与选择优先级
+
+按以下顺序依次决定使用哪个适配器（命中即停）：
+
+1. **环境变量** `AGENT_PIPELINE_ADAPTER`（优先级最高）；
+2. **命令行** `--adapter <name>`（覆盖 `cli.json` 的 `adapter`）；
+3. **`config/cli.json` 的 `adapter` 字段**（默认 `auto`，表示进入自动探测）；
+4. **`autoDetect` 数组依次探测**，默认 `["codebuddy", "cbc", "claude", "codex"]`：`codebuddy` / `cbc` 命中 `CODE_BUDDY_CMD` 环境变量或系统存在 `codebuddy` / `cbc` 命令即选用；其余按命令是否存在逐个判定。全部未命中时报错，提示安装 CLI 或改用 plain。
+
+> 适配器名仅支持 `codebuddy` / `claude` / `codex` / `plain`，写错会直接报错并列出可用值。
+
+### 四种切换方式
+
+**方式一：环境变量（单次运行生效）**
+
+```bash
+AGENT_PIPELINE_ADAPTER=claude node scripts/run-pipeline.js --project-name demo-app
+```
+
+Windows PowerShell：`$env:AGENT_PIPELINE_ADAPTER="claude"; node scripts/run-pipeline.js --project-name demo-app`
+
+**方式二：命令行 `--adapter`（覆盖配置文件）**
+
+```bash
+node scripts/run-pipeline.js --project-name demo-app --adapter codex
+```
+
+**方式三：改 `config/cli.json`（持久生效）**
+
+```json
+{ "adapter": "claude" }
+```
+
+**方式四：plain 自定义命令**
+
+```json
+{
+  "adapter": "plain",
+  "plain": {
+    "command": "aider --message",
+    "promptMode": "arg",
+    "extraArgs": []
+  }
+}
+```
+
+- `command`：命令与固定参数，`adapter=plain` 时必填，为空会报错；
+- `promptMode`：`arg` = 提示词作为最后一个参数追加；`stdin` = 提示词写入标准输入（适合从 stdin 接收任务的 CLI）；
+- `extraArgs`：插在提示词之前的附加参数。
+
+### 覆盖各 CLI 命令路径的环境变量
+
+| 适配器 | 环境变量 | 说明 |
+|--------|----------|------|
+| `codebuddy` | `CODE_BUDDY_CMD` | 覆盖 `codebuddy` / `cbc` 命令路径 |
+| `claude` | `CLAUDE_CLI_CMD` | 覆盖 `claude` 命令路径 |
+| `codex` | `CODEX_CLI_CMD` | 覆盖 `codex` 命令路径 |
+| 全部 | `AGENT_CLI_CMD` | 通用兜底，优先级低于各适配器的专属变量 |
+
+> plain 适配器不走上述变量，命令固定取自 `config/cli.json` 的 `plain.command`。
+
+### 约束说明
+
+- **适配器是流水线级的**：一次运行只使用一个适配器，**不支持按阶段混用**不同 CLI；
+- **可按阶段覆盖的只有 `model` 与 `fallbackModels`**（写在 `config/pipeline.json` 的阶段项上，优先级高于 `config/agents.json` 的代理级配置），适配器、权限、超时等其余配置均按整条流水线生效；
+- **plain 能力受限**：不支持模型指定，也不支持限额回退；`plain.command` 为空时直接报错并终止。
 
 ## 定制与扩展
 
