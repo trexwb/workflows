@@ -51,7 +51,7 @@ node agent-pipeline/scripts/run-pipeline.js --project-name demo-app --dry-run   
 node agent-pipeline/scripts/run-pipeline.js --project-name demo-app --remote    # 远程确认模式
 ```
 
-> 下文根目录 `scripts/` 内的脚本是早期 Windows 专用版本，保留作参考；新用法请一律使用 `agent-pipeline/` 内的便携版。
+> 下文根目录 `scripts/` 内的脚本为早期版本，保留作参考（工作目录同样默认取当前目录，可用 `--project-root` / `--root` 覆盖）；新用法请一律使用 `agent-pipeline/` 内的便携版。
 
 ## 编排原理
 
@@ -112,7 +112,7 @@ workflows/
 
 ## 快速开始
 
-> 项目开发目录固定为 `D:\nodejs\code`，每个项目在根目录下建独立子文件夹（`D:\nodejs\code\<项目名>`），由 `--project-name` 自动生成，无需手动传目录。
+> 项目开发目录默认取**当前工作目录**，每个项目在其下建独立子文件夹（`<当前目录>/<项目名>`），由 `--project-name` 自动生成；如需换位置，用 `--project-root <目录>` 指定根目录（或 `--project-dir` 指定完整目录）。
 
 ```bash
 # 1. 演练模式：只打印每个阶段将要执行的命令，不真正调用 CLI
@@ -155,8 +155,8 @@ node scripts/run-pipeline.js --project-name demo-app --remote
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
 | `--project-name` | 项目名，会注入各阶段 prompt 的 `{projectName}` | 必填 |
-| `--project-dir` | 项目代码目录（开发/测试/部署阶段的工作目录） | 缺省 `D:\nodejs\code\<project-name>` |
-| `--project-root` | 项目根目录（`--project-dir` 未指定时用于拼接子目录） | `D:\nodejs\code` |
+| `--project-dir` | 项目代码目录（开发/测试/部署阶段的工作目录） | 缺省 `<project-root>/<project-name>` |
+| `--project-root` | 项目根目录（`--project-dir` 未指定时用于拼接子目录） | 当前工作目录 |
 | `--from` | 起始阶段 id | `01-product-plan` |
 | `--to` | 结束阶段 id | `07-deploy` |
 | `--interactive` | 交互模式：`confirm: true` 的阶段产出后暂停审阅/可输入修订意见 | `false` |

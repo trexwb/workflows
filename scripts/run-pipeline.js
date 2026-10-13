@@ -9,6 +9,9 @@
  *   node scripts/run-pipeline.js --project-name demo-app --remote
  *     （远程确认模式：人不在电脑边时，confirm 阶段产出后暂停并以退出码 42 通知 Marvis，
  *       由 Marvis 读产物向你确认/收集意见，再以 --from <下一阶段> 或 --from <当前> --amend "<意见>" 续跑）
+ *   node scripts/run-pipeline.js --project-name demo-app --project-root /path/to/workspace
+ *     （项目根目录，缺省取当前工作目录；项目目录 = <project-root>/<project-name>，
+ *       也可用 --project-dir 直接指定完整项目目录）
  *
  * 原理：按 pipeline.json 阶段顺序，每阶段调用一次 CodeBuddy CLI：
  *   codebuddy --agent <agent> --agents '<agentsJson>' -p "<阶段prompt>" \
@@ -96,13 +99,13 @@ function loadCustomModels() {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const projectName = args['project-name'];
-  const projectRoot = args['project-root'] || 'D:\\nodejs\\code';
+  const projectRoot = args['project-root'] || process.cwd();
   const projectDir = args['project-dir'] || path.join(projectRoot, projectName);
   if (!projectName) {
     console.error('错误：必须提供 --project-name');
     process.exit(1);
   }
-  // 项目目录固定根目录下独立子文件夹；新项目目录自动创建
+  // 项目根目录默认取当前工作目录（可用 --project-root 覆盖）；项目目录 = <根目录>/<项目名>，自动创建
   fs.mkdirSync(projectDir, { recursive: true });
 
   const dryRun = !!args['dry-run'];
@@ -130,14 +133,18 @@ function main() {
   const vars = { projectName, projectDir };
   const cliCmd = resolveCliCommand();
 
-  // 执行 CLI：node 入口直跑（数组传参，规避 .cmd 的 EINVAL 与 shell 转义）或 cmd /c 包装（兜底）
+  // 执行 CLI：node 入口直跑（数组传参，规避 .cmd 的 EINVAL 与 shell 转义）；
+  // 字符串型命令 win32 用 cmd /c 包装，非 win32 交给 shell 解析（跨平台）
   function runCli(args, cwd, timeoutMs) {
     const base = { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 };
     if (typeof cliCmd === 'object') {
       return spawnSync(cliCmd.node, [cliCmd.entry, ...args], Object.assign({ cwd }, base));
     }
-    const argStr = args.map(a => (/[\s"]/.test(a) ? '"' + a.replace(/"/g, '\\"') + '"' : a)).join(' ');
-    return spawnSync(process.env.ComSpec || 'cmd.exe', ['/c', `${cliCmd} ${argStr}`], Object.assign({ cwd }, base));
+    if (process.platform === 'win32') {
+      const argStr = args.map(a => (/[\s"]/.test(a) ? '"' + a.replace(/"/g, '\\"') + '"' : a)).join(' ');
+      return spawnSync(process.env.ComSpec || 'cmd.exe', ['/c', `${cliCmd} ${argStr}`], Object.assign({ cwd }, base));
+    }
+    return spawnSync(cliCmd, args, Object.assign({ cwd, shell: true }, base));
   }
 
   // 检查 CLI 是否存在（dry-run 也检查，便于提前发现）

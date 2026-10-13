@@ -10,7 +10,7 @@
  *   node scripts/watch-issues.js --daemon
  *
  *   # 覆盖配置
- *   node scripts/watch-issues.js --owner xxx --repo yyy --token $env:GITHUB_TOKEN --dir D:\code\repo --once
+ *   node scripts/watch-issues.js --owner xxx --repo yyy --token $env:GITHUB_TOKEN --dir /path/to/repo --once
  *
  * 流程：拉取 open issues（按创建时间增量）→ 跳过 PR → 对每个新 issue 调用
  *       run-pipeline.js --pipeline-config config/issue-pipeline.json 执行修复循环
@@ -49,7 +49,7 @@ function loadConfig(args) {
     owner: args['owner'] || fileCfg.owner,
     repo: args['repo'] || fileCfg.repo,
     token: args['token'] || process.env.GITHUB_TOKEN || fileCfg.token,
-    localProjectDir: args['dir'] || fileCfg.localProjectDir,
+    localProjectDir: args['dir'] ? path.resolve(args['dir']) : (fileCfg.localProjectDir ? path.resolve(fileCfg.localProjectDir) : ''),
     intervalMs: parseInt(args['interval-ms'] || fileCfg.intervalMs || 300000, 10),
     pipelineConfig: args['pipeline-config'] || fileCfg.pipelineConfig || 'config/issue-pipeline.json',
     processExisting: args['process-existing'] ? true : !!fileCfg.processExisting,
@@ -59,8 +59,12 @@ function loadConfig(args) {
     console.error('错误：缺少 owner / repo / token。请在 config/github.json 填写，或设置环境变量 GITHUB_TOKEN。');
     process.exit(1);
   }
-  if (!cfg.localProjectDir || !fs.existsSync(cfg.localProjectDir)) {
-    console.error(`错误：本地项目目录不存在：${cfg.localProjectDir}`);
+  if (!cfg.localProjectDir) {
+    console.error('错误：未配置本地项目目录。请在 config/github.json 的 localProjectDir 填写本地仓库克隆目录，或用 --dir <目录> 指定（相对路径按当前工作目录解析）。');
+    process.exit(1);
+  }
+  if (!fs.existsSync(cfg.localProjectDir)) {
+    console.error(`错误：本地项目目录不存在：${cfg.localProjectDir}（来自 config/github.json 的 localProjectDir 或 --dir，请检查路径是否正确）`);
     process.exit(1);
   }
   return cfg;

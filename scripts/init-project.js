@@ -7,7 +7,7 @@
  *   node scripts/init-project.js --url <git地址> --dir <目标目录> [--branch <分支名>] [--dry-run]
  *
  * 行为:
- *   - 目录固定根（默认 D:\nodejs\code）下独立子文件夹：--dir 缺省时 = <根目录>\<项目名>
+ *   - 目标根目录（默认取当前工作目录，可用 --root 覆盖）下独立子文件夹：--dir 缺省时 = <root>/<项目名>
  *   - --name 缺省时取 git 地址末尾仓库名作为项目名
  *   - --branch 缺省时，git ls-remote --heads 取第一个远程分支（即"第 1 位分支"）
  */
@@ -22,7 +22,7 @@ function arg(name, def) {
 
 const url = arg('url', '');
 const name = arg('name', '');
-const root = arg('root', 'D:\\nodejs\\code');
+const root = arg('root', process.cwd());
 let dir = arg('dir', '');
 if (!dir) {
   const repoName = name || (url.split('/').pop() || '').replace(/\.git\s*$/i, '');
