@@ -1,0 +1,21 @@
+{
+  "name": "trexwb-workflows",
+  "owner": {
+    "name": "trexwb"
+  },
+  "metadata": {
+    "description": "多 Agent 软件开发流水线编排 Skill 集合",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "agent-pipeline",
+      "description": "多 Agent 软件开发流水线编排器：产品规划→需求拆解→架构设计→开发编码→代码审查→测试→部署，CLI 适配 CodeBuddy / Claude Code / Codex / 自定义命令，支持远程确认协议与 GitHub Issue 自动修复闭环",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./agent-pipeline"
+      ]
+    }
+  ]
+}

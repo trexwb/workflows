@@ -1,0 +1,42 @@
+name: Release Skill
+
+# 推送 v* 标签时：打包 agent-pipeline/ 为 .skill（zip）并自动附到 GitHub Release
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 校验 skill 结构
+        run: |
+          test -f agent-pipeline/SKILL.md || { echo "缺少 agent-pipeline/SKILL.md"; exit 1; }
+          head -4 agent-pipeline/SKILL.md | grep -q '^name: agent-pipeline' || { echo "SKILL.md frontmatter 异常"; exit 1; }
+
+      - name: 打包 .skill（zip，保留 agent-pipeline/ 目录前缀）
+        run: |
+          mkdir -p dist
+          zip -r dist/agent-pipeline.skill agent-pipeline \
+            -x '*/.DS_Store' -x '*/artifacts/*' -x '*/logs/*' -x '*/__MACOSX/*'
+          unzip -l dist/agent-pipeline.skill | grep -q 'agent-pipeline/SKILL.md'
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-pipeline-skill
+          path: dist/agent-pipeline.skill
+
+      - name: 发布到 Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/agent-pipeline.skill
+          generate_release_notes: true

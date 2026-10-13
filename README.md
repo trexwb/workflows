@@ -4,14 +4,49 @@
 
 ## Agent Skill 安装与使用（v1.0.0 起，推荐）
 
-本仓库的编排能力已打包为标准 Agent Skill：**`agent-pipeline/`**，任何支持 Agent Skills 的助手/CLI 都可安装执行；分发件见 `dist/agent-pipeline.skill`。
+本仓库的编排能力已打包为标准 Agent Skill：**`agent-pipeline/`**，支持从 GitHub 直接安装到主流 agent（方式见下）。
 
 - **跨 CLI**：内置适配层自动探测并适配 CodeBuddy / Claude Code / Codex / 任意自定义命令（`config/cli.json`），零 npm 依赖，macOS / Linux / Windows 可用；
 - **跨平台默认值**：项目目录默认落在当前目录（`--project-root` 可覆盖），产物/日志写入运行目录或 `--work-dir`，不再依赖 `D:\nodejs\code`；
 - **可被程序驱动**：`--remote` 远程确认协议（exit 42 + 状态文件）让 IM 机器人或其他 agent 代你确认/修订，协议详见 `agent-pipeline/references/remote-confirm.md`。
 
+### 从 GitHub 安装（任选其一）
+
+**方式一：skills CLI（Codex / Cursor / Cline / Copilot / Gemini CLI / Claude Code 等通用）**
+
 ```bash
-# 安装：把 agent-pipeline/ 拷入目标 agent 的 skills 目录，或直接以仓库路径运行
+npx skills add trexwb/workflows --skill agent-pipeline        # 项目级安装
+npx skills add trexwb/workflows --skill agent-pipeline -g     # 全局（~/<agent>/skills/）
+```
+
+**方式二：Claude Code 插件市场（本仓库已内置 `.claude-plugin/marketplace.json`）**
+
+```
+/plugin marketplace add trexwb/workflows
+/plugin install agent-pipeline@trexwb-workflows
+```
+
+**方式三：OpenClaw**
+
+```bash
+openclaw skills install git:trexwb/workflows@main
+```
+
+> skill 位于 `agent-pipeline/` 子目录；若该源未自动发现子目录技能，请用方式四。
+
+**方式四：裸克隆拷贝（通用兑底）**
+
+```bash
+git clone https://github.com/trexwb/workflows.git
+cp -r workflows/agent-pipeline ~/.claude/skills/      # Claude Code
+# 其他 agent：~/.agents/skills/（Codex/Cursor 等通用）或 ~/.openclaw/skills/
+```
+
+**Release 资产**：推送 `v*` 标签后，GitHub Actions 自动把 `agent-pipeline.skill`（zip）附到 [Releases](https://github.com/trexwb/workflows/releases)，下载解压到上述 skills 目录即可。
+
+### 本地运行（已克隆本仓库）
+
+```bash
 node agent-pipeline/scripts/run-pipeline.js --project-name demo-app --dry-run   # 演练
 node agent-pipeline/scripts/run-pipeline.js --project-name demo-app --remote    # 远程确认模式
 ```
