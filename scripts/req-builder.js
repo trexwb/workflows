@@ -87,14 +87,18 @@ function resolveCliCommand() {
   return 'codebuddy';
 }
 
+// 执行 CLI：node 入口直跑（数组传参）；字符串型命令 win32 用 cmd /c 包装，非 win32 交给 shell 解析（跨平台）
 function runCli(args, cwd, timeoutMs) {
   const cliCmd = resolveCliCommand();
   const base = { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 };
   if (typeof cliCmd === 'object') {
     return spawnSync(cliCmd.node, [cliCmd.entry, ...args], Object.assign({ cwd }, base));
   }
-  const argStr = args.map(a => (/[\s"]/.test(a) ? '"' + a.replace(/"/g, '\\"') + '"' : a)).join(' ');
-  return spawnSync(process.env.ComSpec || 'cmd.exe', ['/c', `${cliCmd} ${argStr}`], Object.assign({ cwd }, base));
+  if (process.platform === 'win32') {
+    const argStr = args.map(a => (/[\s"]/.test(a) ? '"' + a.replace(/"/g, '\\"') + '"' : a)).join(' ');
+    return spawnSync(process.env.ComSpec || 'cmd.exe', ['/c', `${cliCmd} ${argStr}`], Object.assign({ cwd }, base));
+  }
+  return spawnSync(cliCmd, args, Object.assign({ cwd, shell: true }, base));
 }
 
 // 从 ~/.codebuddy/models.json 读取 wb bridge（buddy-bridge）同步的自定义模型列表；CLI 完整 ID 为 custom-local:<id>

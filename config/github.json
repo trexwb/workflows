@@ -2,7 +2,7 @@
   "owner": "your-github-username",
   "repo": "your-repo-name",
   "token": "请把 GitHub Personal Access Token 填到这里，或设置环境变量 GITHUB_TOKEN",
-  "localProjectDir": "D:\\code\\your-repo-local-clone",
+  "localProjectDir": "/path/to/your-repo-local-clone",
   "intervalMs": 300000,
   "pipelineConfig": "config/issue-pipeline.json",
   "processExisting": false,
