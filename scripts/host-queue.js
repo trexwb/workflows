@@ -1,6 +1,6 @@
 'use strict';
 /**
- * host-queue.js —— 宿主侧工单队列操作（与 run-pipeline.js 配套，不使用任何 CLI）
+ * host-queue.js —— 宿主侧工单队列操作（与 run-pipeline.js 配套，执行基于宿主程序本身）
  *
  * 用法：
  *   node scripts/host-queue.js --work-dir <dir> status            查看当前待派发工单
@@ -41,7 +41,7 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  console.log(`宿主工单队列（无 CLI 派发）
+  console.log(`宿主工单队列（宿主程序执行）
 
 用法：node scripts/host-queue.js --work-dir <dir> <子命令> [选项]
 
@@ -49,7 +49,7 @@ function usage() {
   status                  查看当前待派发工单（无人待办时提示空队列）
   list [--json]           待办 + 最近交付历史
   submit --file <path>    用文件内容回写当前工单结果（子 Agent 输出原文）
-  submit --text "…"       用命令行字符串回写结果
+  submit --text "…"       直接给定文本内容回写结果
   cancel                  作废当前待派发工单（会归档，可重跑重新生成）
 
 选项：

@@ -65,5 +65,5 @@
     "resumeStage": "03-fix-dev",
     "maxRounds": 2
   },
-  "_comment": "阶段字段：id/name/agent（对应 agents.json 键）、promptFile（相对 skill 根）、input（前序产物路径列表，缺失仅告警）、output（产物落盘路径，null=不落盘）、model/fallbackModels 可在阶段级覆盖。projectManager 默认启用：验证 VERDICT 由项目经理结合 REPORT 验收，confirm 仅旧配置生效。顶层 retry 仅在旧配置回退模式使用：验证产物命中 failPattern 且轮数未用尽时自动回 resumeStage，最多 maxRounds 轮（--fix-rounds 可覆盖，0=关闭）；缺少 VERDICT 或轮数用尽均失败关闭。首个阶段读 artifacts/00-requirement.md：手动跑时由 --requirement 写入，watch-issues 触发时由监听器写入。"
+  "_comment": "阶段字段：id/name/agent（对应 agents.json 键）、promptFile（相对 skill 根）、input（前序产物路径列表，缺失仅告警）、output（产物落盘路径，null=不落盘）。projectManager 默认启用：验证 VERDICT 由项目经理结合 REPORT 验收，confirm 仅旧配置生效。顶层 retry 仅在旧配置回退模式使用：验证产物命中 failPattern 且轮数未用尽时自动回 resumeStage，最多 maxRounds 轮（--fix-rounds 可覆盖，0=关闭）；缺少 VERDICT 或轮数用尽均失败关闭。首个阶段读 artifacts/00-requirement.md：手动跑时由 --requirement 写入，watch-issues 触发时由监听器写入。"
 }

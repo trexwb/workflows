@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * 需求构建器 —— 流水线前置（宿主派发版，不调用任何 CLI，需求整理任务同样交由宿主子 Agent 执行）
+ * 需求构建器 —— 流水线前置（宿主执行版，执行基于宿主程序本身，需求整理任务同样交由宿主子 Agent 执行）
  *
  * 流程：引导用户按 7 维度格式描述需求 → AI 整理为双版本提示词 → 用户选择版本 → 写入 artifacts/00-requirement.md
  *
  * 用法：
  *   node scripts/req-builder.js --guide                          # 输出需求描述引导模板（7 维度格式）
  *   node scripts/req-builder.js --build "<用户需求文本>"          # AI 整理：精简通用版 + 高阶顶配版
- *   node scripts/req-builder.js --build "<文本>" --dry-run        # 演练：只打印完整提示词，不调用 CLI
+ *   node scripts/req-builder.js --build "<文本>" --dry-run        # 演练：只打印完整提示词，不派发执行
  *   node scripts/req-builder.js --select A|B [--remote]          # 选择版本 → 写入 artifacts/00-requirement.md
  *   node scripts/req-builder.js --select A --auto-run --project-name demo-app
  *                                                                # 选版后自动续跑流水线（透传参数）
@@ -99,7 +99,7 @@ function main() {
     if (template.indexOf('{userNeed}') === -1) { console.error('错误：模板缺少 {userNeed} 占位符'); process.exit(1); }
     const prompt = template.replace(/\{userNeed\}/g, needText);
 
-    // 宿主派发：需求整理同样不调用任何 CLI，工单落盘后交还执行权
+    // 宿主执行：需求整理同样基于宿主程序本身，工单落盘后交还执行权
     const hostCfg = hostAdapter.loadConfig(WORK_ROOT, args['host-config'] ? path.resolve(args['host-config']) : null, {
       fakeScript: typeof args['host-script'] === 'string' ? args['host-script'] : '',
       projectName: args['project-name'] || 'req-builder',
@@ -128,12 +128,7 @@ function main() {
       agentId: 'requester',
       agentDef: null,
       agentsJson: '{}',
-      model: null,
-      fallbackModel: null,
       cwd: WORK_ROOT,
-      timeoutMs: hostCfg.timeoutMs || 0,
-      permissions: hostCfg.permissions,
-      outputFormat: hostCfg.outputFormat,
     });
     if (result.status !== 0) {
       const errText = (result.stderr || '').trim() || (result.stdout || '').trim() || ('exit=' + result.status);

@@ -47,9 +47,9 @@ description: 做什么 + 何时触发
 
 `allowed-tools` 仅在 CodeBuddy 生效，用于允许 skill 执行 `Bash` 调用编排脚本；其他宿主忽略该字段，仍按各自的权限模型询问用户。
 
-## 4. 执行方式：宿主派发（不调用 CLI）
+## 4. 执行方式：基于宿主程序本身
 
-流水线本身不产生 AI 能力，也**不 spawn 任何外部命令**。`scripts/lib/host-adapter.js` 把每个阶段的任务正文写成工单，然后以**退出码 3** 交还执行权；宿主用自身的派发能力执行，回写结果后重跑即可推进。
+流水线本身不产生 AI 能力，**执行完全基于宿主程序本身**，不启动任何外部进程。`scripts/lib/host-adapter.js` 把每个阶段的任务正文写成工单，然后以**退出码 3** 交还执行权；宿主用自身的派发能力执行，回写结果后重跑即可推进。
 
 | 文件 | 用途 |
 |------|------|
@@ -67,7 +67,7 @@ description: 做什么 + 何时触发
 | WorkBuddy / CodeBuddy / zCode / Qoder | 宿主 Agent 读工单正文执行，回写后重跑编排器 |
 | 任意自定义宿主 / 离线自测 | `--host-script <js>` 注入进程内响应器（导出 `respond(prompt, ctx)` 返回正文字符串） |
 
-环境变量只剩一个与执行相关：`AGENT_PIPELINE_FAKE_SCRIPT`（等价于 `--host-script`，供自动化脚本使用）。不再有 `AGENT_PIPELINE_HOST` / `AGENT_PIPELINE_ADAPTER` / `*_CLI_CMD` 之类的 CLI 探测变量。
+环境变量只剩一个与执行相关：`AGENT_PIPELINE_FAKE_SCRIPT`（等价于 `--host-script`，供自动化脚本使用）。不再有 `AGENT_PIPELINE_HOST` / `AGENT_PIPELINE_ADAPTER` / `*_CLI_CMD` 之类的命令行探测变量。
 
 > 同一轮推进请固定 `--work-dir`；工单键为「阶段--角色」，任务正文变化会触发 `promptHash` 不一致，旧工单自动标记 `superseded` 并归档。
 

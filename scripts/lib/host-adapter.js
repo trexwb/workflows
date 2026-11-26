@@ -1,9 +1,9 @@
 'use strict';
 /**
- * host-adapter.js —— 无 CLI 的宿主派发执行层
+ * host-adapter.js —— 基于宿主程序本身的执行层
  *
- * 设计目标：与 v1.3.0 的 adapter.js 保持同一 runner 接口（name / label / capabilities /
- * probe / run / extraModels / supportsFallbackFlag），但 **不启动任何外部进程、不依赖任何 agent CLI**。
+ * 设计目标：只保留最小 runner 接口（name / label / probe / run），
+ * **不启动任何外部进程、不调用任何模型**：阶段执行完全基于宿主程序自身的 Agent 能力。
  *
  * 执行模型（三段式往返）：
  *   1. 脚本推进到某阶段，调用 runner.run({ prompt, agentId, ... })
@@ -41,11 +41,8 @@ const DEFAULT_CONFIG = {
   execDir: 'handoff/executions',
   queueFile: 'handoff/queue.json',
   keepDone: 40,
-  timeoutMs: 0,
-  permissions: 'n/a',
-  outputFormat: 'text',
   fakeScript: '',
-  _comment: '宿主派发配置：工单/结果/归档目录均相对 --work-dir。timeoutMs/permissions/outputFormat 仅为兼容旧配置保留，host 模式下不生效。',
+  _comment: '宿主派发配置：工单/结果/归档目录均相对 --work-dir。阶段执行基于宿主程序本身，编排器不调用模型，也不处理超时、权限与输出格式。',
 };
 
 function readJsonSafe(file, fallback) {
@@ -153,9 +150,9 @@ function buildOrder(cfg, ctx) {
   lines.push(`| 结果文件 | \`${resultRel}\` |`);
   lines.push(`| 创建时间 | ${new Date().toISOString()} |`);
   lines.push('');
-  lines.push('## 一、给宿主的执行步骤（不使用任何 CLI）');
+  lines.push('## 一、给宿主的执行步骤（基于宿主程序本身）');
   lines.push('');
-  lines.push('1. 读取下文「三、任务正文」，作为子 Agent 的任务材料派发执行（Marvis 用 `dispatch_task`，其它宿主用各自的子 Agent / 内置执行能力）。**不要启动 codebuddy / claude / codex 等任何外部 CLI。**');
+  lines.push('1. 读取下文「三、任务正文」，作为子 Agent 的任务材料派发执行（Marvis 用 `dispatch_task`，其它宿主用各自的子 Agent / 内置执行能力）。**执行完全由宿主程序自身完成，不需要另起任何命令行进程。**');
   lines.push('2. 子 Agent 完成后，把它输出的**全文**（含正文与各类 `===== XXX =====` 标记段，不要删改、不要额外加工）回写结果文件：');
   lines.push('');
   lines.push('   ```bash');
@@ -225,7 +222,7 @@ function stageKeyOf(req, prompt) {
 function banner(cfg, info) {
   return [
     '',
-    '──────────── 等待宿主执行（未调用任何 CLI） ────────────',
+    '──────────── 等待宿主程序执行 ────────────',
     `阶段角色：${info.agentId}`,
     `工单键　：${info.key}`,
     `任务正文：${info.promptChars} 字符，指纹 ${String(info.promptHash).slice(0, 12)}`,
@@ -279,7 +276,7 @@ function loadExecution(cfg, key, promptHash) {
  * 单阶段执行入口：
  *   1. 有待办且就是本阶段：有结果 → 消费；指纹不同 → 旧单作废重出；否则继续等待
  *   2. 无本阶段待办：中断遗留结果 → 消费；命中阶段缓存 → 直接重放；否则出新单
- * 返回结构与 CLI 适配器一致：{ status, stdout, stderr }。
+ * 返回结构统一为 { status, stdout, stderr }。
  */
 function runHost(cfg, req) {
   if (cfg.mode === 'fake') {
@@ -369,23 +366,15 @@ function createRunner(cfg) {
   return {
     name: 'host',
     placeholder: false,
-    label: () => '宿主派发（dispatch_task / 子 Agent，无 CLI）',
-    capabilities: { model: false, agents: false, tools: false },
-    supportsFallbackFlag: false,
-    extraModels: () => [],
+    label: () => '宿主程序派发 · 子 Agent 执行',
     probe: () => ({
       status: 0,
       stdout: cfg.mode === 'fake'
         ? `宿主派发（fake 模式：${cfg.fakeScript}）`
-        : '宿主派发（无 CLI：工单落盘 + 宿主执行 + 结果回写）',
+        : '宿主派发（工单落盘 + 宿主程序执行 + 结果回写）',
     }),
     run: (req) => runHost(cfg, req),
   };
-}
-
-/** host 模式不存在模型限额换号问题，保留该接口以兼容调用点 */
-function isQuotaError() {
-  return false;
 }
 
 module.exports = {
@@ -393,7 +382,6 @@ module.exports = {
   DEFAULT_CONFIG,
   loadConfig,
   createRunner,
-  isQuotaError,
   orderKey,
   buildOrder,
   loadQueue,

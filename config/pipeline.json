@@ -94,5 +94,5 @@
       "output": "artifacts/07-deploy.md"
     }
   ],
-  "_comment": "阶段字段：id/name/agent（对应 agents.json 键）、promptFile（相对 skill 根）、input（前序产物路径列表，缺失仅告警）、output（产物落盘路径，null=不落盘）、model/fallbackModels 可在阶段级覆盖。projectManager 默认启用：项目经理负责派活与逐阶段验收，confirm 字段仅在旧配置回退模式用于人工确认。"
+  "_comment": "阶段字段：id/name/agent（对应 agents.json 键）、promptFile（相对 skill 根）、input（前序产物路径列表，缺失仅告警）、output（产物落盘路径，null=不落盘）。projectManager 默认启用：项目经理负责派活与逐阶段验收，confirm 字段仅在旧配置回退模式用于人工确认。"
 }

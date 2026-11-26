@@ -1,18 +1,18 @@
 # agent-pipeline
 
-多 Agent 软件开发流水线编排器，目标是帮助用户**「从一个想法自动推进到可交付代码」**或**「一条修复需求自动推进到可发布修复」**。默认由独立项目经理负责启动派活、生成任务书、逐阶段验收、返工/退回上游、最终验收与人工升级；专业角色仍按固定阶段交付：开发七阶段（产品规划 → 需求拆解 → 架构设计 → 开发编码 → 代码审查 → 测试 → 部署），修复五阶段（分析 → 方案 → 修复 → 验证 → PR 描述，支持手动需求与 GitHub Issue）。专业角色通过 REPORT 反馈证据，项目经理通过 DECISION 控制路由，只有业务范围、生产发布、不可逆操作、授权或证据冲突等无权决策事项才升级人工。每个角色自带持久知识库、过程记忆与动态委托能力（项目经理门禁禁止委托）；阶段间用 `artifacts/` 传递产物，支持远程人工恢复、断点续跑、限额自动切换模型，并附带需求构建器。最终验收表示可交付/待部署，不表示已上线。
+多 Agent 软件开发流水线编排器，目标是帮助用户**「从一个想法自动推进到可交付代码」**或**「一条修复需求自动推进到可发布修复」**。默认由独立项目经理负责启动派活、生成任务书、逐阶段验收、返工/退回上游、最终验收与人工升级；专业角色仍按固定阶段交付：开发七阶段（产品规划 → 需求拆解 → 架构设计 → 开发编码 → 代码审查 → 测试 → 部署），修复五阶段（分析 → 方案 → 修复 → 验证 → PR 描述，支持手动需求与 GitHub Issue）。专业角色通过 REPORT 反馈证据，项目经理通过 DECISION 控制路由，只有业务范围、生产发布、不可逆操作、授权或证据冲突等无权决策事项才升级人工。每个角色自带持久知识库、过程记忆与动态委托能力（项目经理门禁禁止委托）；阶段间用 `artifacts/` 传递产物，支持远程人工恢复、断点续跑、宿主派发执行，并附带需求构建器。最终验收表示可交付/待部署，不表示已上线。
 
-遵循 **Agent Skills 开放标准**，一份 `SKILL.md` 可部署到 **WorkBuddy / CodeBuddy / zCode / Qoder / Marvis / Claude Code / Codex** 及任意自定义 agent CLI。编排器本身是纯 Node.js 脚本（**Node.js >= 18、零 npm 依赖、macOS / Linux / Windows 通用**），**不调用任何 agent CLI**，AI 能力来自宿主自己的派发能力。技能的完整行为契约（目标、输入、工作流与角色、执行步骤、输出格式、约束）见 [`SKILL.md` 的「技能契约」](SKILL.md#技能契约)。
+遵循 **Agent Skills 开放标准**，一份 `SKILL.md` 可部署到 **WorkBuddy / CodeBuddy / zCode / Qoder / Marvis / Claude Code / Codex** 及任意 Agent Skills 宿主。编排器本身是纯 Node.js 脚本（**Node.js >= 18、零 npm 依赖、macOS / Linux / Windows 通用**），**执行完全基于宿主程序本身**，AI 能力来自宿主自己的派发能力，无需额外安装命令行工具。技能的完整行为契约（目标、输入、工作流与角色、执行步骤、输出格式、约束）见 [`SKILL.md` 的「技能契约」](SKILL.md#技能契约)。
 
 当前版本：**2.0.0**（唯一权威来源：`meta.json` 的 `version`；用 `node scripts/version.js` 管理，历史见 `CHANGELOG.md`）。
 
-**内容导航**：[快速开始](#1-快速开始) · [安装](#2-安装到五个宿主) · [宿主派发](#3-宿主派发不调用任何-cli) · [运行流水线](#4-运行流水线) · [辅助入口](#5-三个辅助入口) · [定制](#6-定制不改动安装目录) · [故障排查](#7-故障排查) · [约定与退出码](#8-运行时约定与退出码) · [目录](#9-目录结构) · [版本管理](#10-版本管理与迭代) · [文档索引](#11-文档索引)
+**内容导航**：[快速开始](#1-快速开始) · [安装](#2-安装到五个宿主) · [宿主执行](#3-宿主执行基于宿主程序本身) · [运行流水线](#4-运行流水线) · [辅助入口](#5-三个辅助入口) · [定制](#6-定制不改动安装目录) · [故障排查](#7-故障排查) · [约定与退出码](#8-运行时约定与退出码) · [目录](#9-目录结构) · [版本管理](#10-版本管理与迭代) · [文档索引](#11-文档索引)
 
 ---
 
 ## 1. 快速开始
 
-前置：Node.js >= 18；**无需安装或登录任何 agent CLI**。
+前置：Node.js >= 18；**执行基于宿主程序本身，无需安装或登录额外的命令行工具**。
 
 ### 安装（三选一）
 
@@ -162,9 +162,9 @@ bash <(curl -fsSL https://raw.githubusercontent.com/trexwb/agent-pipeline/main/s
 
 ---
 
-## 3. 宿主派发（不调用任何 CLI）
+## 3. 宿主执行（基于宿主程序本身）
 
-流水线**不启动任何外部进程**。`scripts/lib/host-adapter.js` 只做四件事：出工单、交还执行权、接收回写、复用结果。谁执行由宿主决定（Marvis 用 `dispatch_task` 派子 Agent，其它宿主用自身派发能力写完文件回写即可）。
+流水线**不启动任何外部进程**，阶段执行全部交给宿主程序本身。`scripts/lib/host-adapter.js` 只做四件事：出工单、交还执行权、接收回写、复用结果。谁执行由宿主决定（Marvis 用 `dispatch_task` 派子 Agent，其它宿主用自身派发能力写完文件回写即可）。
 
 | 概念 | 落点 | 说明 |
 |------|------|------|
@@ -204,7 +204,7 @@ node scripts/host-queue.js --work-dir ./run submit --file ./out.md
 }
 ```
 
-> 模型偏好（`config/agents.json` 的 `model` / `fallbackModels`）只作为工单里的声明传给宿主，编排器不做限额换号；`auto` 表示交给宿主自行选择。离线自测可用 `--host-script <js>` 注入进程内响应器（导出 `respond(prompt)` 返回正文），无需任何外部工具。
+> 编排器不调用任何模型，也不声明模型、超时或权限：`config/agents.json` 只保留提示词与 `knowledge` / `memory` 开关，用什么模型完全由宿主程序决定。离线自测可用 `--host-script <js>` 注入进程内响应器（导出 `respond(prompt)` 返回正文），无需任何外部工具。
 
 ---
 
@@ -255,7 +255,6 @@ node scripts/run-pipeline.js --project-name demo-app --project-dir ./demo-app \
 | `--dry-run` | 只校验阶段链与提示词，不出工单 | 关闭 |
 | `--pipeline-config` / `--agents-config` / `--host-config` | 配置路径覆盖 | `config/` 下默认值 |
 | `--host-script <js>` | 进程内响应器（导出 `respond(prompt)`）替代宿主派发，离线自测用 | 无 |
-| `--timeout-ms` | 单阶段执行超时（毫秒） | `config/host.json` 的 `timeoutMs` |
 
 ### 阶段与产物
 
@@ -438,7 +437,7 @@ node scripts/init-project.js --url git@github.com:org/repo.git --name demo-app -
 <work-dir>/
 ├── config/
 │   ├── pipeline.json        # 增删阶段、调整 confirm / input / output
-│   ├── agents.json          # 角色提示词、模型、fallbackModels、knowledge 开关
+│   ├── agents.json          # 角色提示词、knowledge / memory 开关
 │   └── host.json            # 宿主派发目录、队列、超时
 ├── prompts/
 │   └── 04-develop.md        # 覆盖单个阶段提示词
@@ -450,9 +449,9 @@ node scripts/init-project.js --url git@github.com:org/repo.git --name demo-app -
 └── artifacts/               # 产物
 ```
 
-也可用 `--pipeline-config` / `--agents-config` / `--host-config` 直接指向自定义文件。提示词支持 `{projectName}` / `{projectDir}` / `{userNeed}` 占位符；阶段级 `model` / `fallbackModels` 优先于代理级配置。
+也可用 `--pipeline-config` / `--agents-config` / `--host-config` 直接指向自定义文件。提示词支持 `{projectName}` / `{projectDir}` / `{userNeed}` 占位符。
 
-> 编排器不 spawn 任何外部命令，因此没有 CLI 权限参数可配；阶段实际权限由宿主派发的子 Agent 决定。
+> 编排器不启动任何外部进程，执行一律基于宿主程序本身，因此没有命令行权限参数可配；阶段实际权限由宿主派发的子 Agent 决定。
 
 ---
 
@@ -464,7 +463,6 @@ node scripts/init-project.js --url git@github.com:org/repo.git --name demo-app -
 | 回写后仍重复出单 | `promptHash` 不一致（任务正文变了）。旧工单会被标 `superseded` 归档，按最新工单执行即可 |
 | `工单文件缺失` / `ENOENT handoff/...` | `--work-dir` 变了导致工单目录不一致。同一轮推进请固定同一个 `--work-dir` |
 | 结果串了别的阶段 | 检查 `handoff/queue.json` 的 `stageId`，`cancel` 作废当前待办后重跑出单 |
-| 模型报 400 / 限额 | `config/agents.json` 的 `model` 只是工单里的声明，宿主模式不做换号；改回 `auto` 或交给宿主选择 |
 | 阶段产物为空或只有 `(空输出)` | 子 Agent 把文档写进了文件而非 stdout。检查自定义提示词是否保留「输出方式（强约束）」段落 |
 | 阶段失败 `exit 2` | 用 `--from <失败阶段>` 续跑；日志见 `logs/pipeline.log`，前序产物不会重算 |
 | 安装时提示「目标目录位于 skill 源码目录内」 | `--project-root` 指向了 skill 源码目录，换一个真实项目根目录 |
@@ -478,7 +476,7 @@ node scripts/init-project.js --url git@github.com:org/repo.git --name demo-app -
 ## 8. 运行时约定与退出码
 
 - 产物 `artifacts/`、日志 `logs/`、状态文件 `data/`、`.confirm-state.json` / `.req-state.json` 与项目经理状态/升级包一律写 `--work-dir`（默认当前目录），安装目录可保持只读，且这些路径已被 `.gitignore` 忽略。
-- 执行宿主由宿主侧决定：编排器只出工单，同一轮推进请固定 `--work-dir`；`model` / `fallbackModels` 仅作工单声明传递给宿主。
+- 执行宿主由宿主侧决定：编排器只出工单，同一轮推进请固定 `--work-dir`；执行由宿主程序承担，模型、超时、权限都不在技能侧声明。
 - 阶段失败时 `exit 2`，前序产物保留；人工升级或远程确认挂起时 `exit 42`。
 
 | 退出码 | 含义 |
@@ -503,7 +501,7 @@ agent-pipeline/
 │       └── release.yml          GitHub Actions：打 tag 时自动打包 zip 并上传到 Release
 ├── config/
 │   ├── host.json                宿主派发目录、队列与超时
-│   ├── agents.json              8 个角色（项目经理 + 7 个专业角色）与模型
+│   ├── agents.json              8 个角色（项目经理 + 7 个专业角色）与 knowledge/memory 开关
 │   ├── pipeline.json            开发流 7 阶段 + 项目经理配置
 │   ├── issue-pipeline.json     修复流 5 阶段 + 项目经理/旧回炉配置
 │   └── github.json              Issue 监听配置模板

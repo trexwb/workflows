@@ -7,7 +7,7 @@
 | 退出码 | 含义 | stdout 标记 | 状态文件 |
 |--------|------|-------------|----------|
 | `0` | 完成、本次范围执行结束或用户取消 | 无 | 项目经理状态为 `complete` / `paused` / `cancelled` |
-| `1` | 配置、状态或 CLI 错误 | 无 | 按错误处理 |
+| `1` | 配置或状态错误 | 无 | 按错误处理 |
 | `2` | 专业阶段或验收失败 | 无 | 项目经理状态通常为 `failed` |
 | `42` | 等待人工决策 | `HUMAN_DECISION_NEEDED` | `artifacts/pm-escalation.json` |
 | `42` | 旧配置等待阶段确认 | `REMOTE_CONFIRM_NEEDED` | `artifacts/.confirm-state.json` |

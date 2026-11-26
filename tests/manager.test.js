@@ -191,7 +191,7 @@ function createHarness(t) {
       assert.ok(pending, '等待宿主时必须登记待办工单');
       assert.ok(fs.existsSync(pending.orderAbs), '工单文件必须落盘：' + pending.orderAbs);
       const orderText = fs.readFileSync(pending.orderAbs, 'utf8');
-      assert.match(orderText, /不使用任何 CLI/);
+      assert.match(orderText, /基于宿主程序本身/);
       const outFile = path.join(root, 'host-output-' + i + '.md');
       fs.writeFileSync(outFile, responder.respond(orderText));
       const submitted = spawnSync(process.execPath, [
@@ -399,7 +399,7 @@ test('未回写结果时以退出码 3 交还执行权，同一任务正文复�
   const env = Object.assign({}, process.env, { FAKE_SCENARIO: 'happy', FAKE_COUNTER_FILE: h.counterFile });
   const first = spawnSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8', env });
   assert.equal(first.status, 3, first.stdout + first.stderr);
-  assert.match(first.stdout, /等待宿主执行（未调用任何 CLI）/);
+  assert.match(first.stdout, /等待宿主程序执行/);
   assert.match(first.stdout, /host-queue\.js/);
   const queueFile = path.join(h.workDir, 'handoff', 'queue.json');
   const q1 = JSON.parse(fs.readFileSync(queueFile, 'utf8'));

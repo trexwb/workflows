@@ -2,15 +2,15 @@
 name: agent-pipeline
 version: 2.0.0
 display_name: 多 Agent 开发流水线
-description: 多 Agent 软件开发流水线编排器，由独立项目经理负责启动派活、任务书、逐阶段验收、返工/退回上游、最终验收与人工升级，专业角色仍按固定阶段交付。开发流水线含产品规划、需求拆解、架构设计、开发编码、代码审查、测试、部署 7 个专业阶段；修复流水线含分析、方案、修复、验证、PR 描述 5 个专业阶段，支持手动需求与 GitHub Issue。专业角色通过 REPORT 反馈证据，项目经理通过 DECISION 路由；只有业务范围、生产发布、不可逆操作、授权或证据冲突等无权决策事项才升级人工。阶段间用 artifacts 传递产物，支持远程人工恢复、断点续跑、宿主派发执行、角色知识库、过程记忆与动态委托；旧配置自动回退原人工确认/回炉逻辑。This skill should be used when 用户想从一个想法自动走到可交付代码、要求项目经理编排与验收多 Agent 协作、想让不同阶段使用不同角色或模型、要积累复用经验或任务记忆、要生成 A/B 双版本需求、要修复现有功能或运行 GitHub Issue 自动修复循环。触发词包括 项目经理、自动编排、流水线、pipeline、从需求到开发完成、多 Agent 协作、阶段验收、功能修复、角色知识库、角色记忆、动态委托、issue 自动修复。不调用任何 agent CLI：编排器出工单，由宿主派发子 Agent 执行后回写，适用于具备派发能力或可回写结果的任意 Agent Skills 宿主。不用于单文件小改动、简单问答或直接的代码片段生成。
+description: 多 Agent 软件开发流水线编排器，由独立项目经理负责启动派活、任务书、逐阶段验收、返工/退回上游、最终验收与人工升级，专业角色仍按固定阶段交付。开发流水线含产品规划、需求拆解、架构设计、开发编码、代码审查、测试、部署 7 个专业阶段；修复流水线含分析、方案、修复、验证、PR 描述 5 个专业阶段，支持手动需求与 GitHub Issue。专业角色通过 REPORT 反馈证据，项目经理通过 DECISION 路由；只有业务范围、生产发布、不可逆操作、授权或证据冲突等无权决策事项才升级人工。阶段间用 artifacts 传递产物，支持远程人工恢复、断点续跑、宿主派发执行、角色知识库、过程记忆与动态委托；旧配置自动回退原人工确认/回炉逻辑。This skill should be used when 用户想从一个想法自动走到可交付代码、要求项目经理编排与验收多 Agent 协作、想让不同阶段使用不同角色、要积累复用经验或任务记忆、要生成 A/B 双版本需求、要修复现有功能或运行 GitHub Issue 自动修复循环。触发词包括 项目经理、自动编排、流水线、pipeline、从需求到开发完成、多 Agent 协作、阶段验收、功能修复、角色知识库、角色记忆、动态委托、issue 自动修复。执行完全基于宿主程序本身：编排器只出工单，由宿主自身的子 Agent 派发能力执行后回写，不依赖任何外部命令行工具，适用于具备派发能力或可回写结果的任意 Agent Skills 宿主。不用于单文件小改动、简单问答或直接的代码片段生成。
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
 # 多 Agent 开发流水线（agent-pipeline）
 
-把软件开发拆成固定专业阶段，由独立子 Agent（角色 + 系统提示词 + 模型 + 工具白名单）执行；项目经理在阶段之间派活与验收，编排器负责组装 prompt → 落成阶段工单交给宿主派发执行 → 落盘产物 → 执行结构化路由 / 人工升级 / 断点续跑 / 限额自动切换模型。默认启用项目经理，旧配置可回退原人工确认模式。
+把软件开发拆成固定专业阶段，由独立子 Agent（角色 + 系统提示词 + 执行约定）执行；项目经理在阶段之间派活与验收，编排器负责组装 prompt → 落成阶段工单交给宿主派发执行 → 落盘产物 → 执行结构化路由 / 人工升级 / 断点续跑 / 工单往返。默认启用项目经理，旧配置可回退原人工确认模式。
 
-本 skill 是**纯 Node.js 编排壳**（Node >= 18，零 npm 依赖），自身不实现 AI 能力、也**不调用任何 CLI**；AI 能力来自宿主自己的派发能力（如 Marvis 的 `dispatch_task`）。
+本 skill 是**纯 Node.js 编排壳**（Node >= 18，零 npm 依赖），自身不实现任何 AI 能力——阶段执行**完全基于宿主程序本身**，由宿主自己的派发能力完成（如 Marvis 的 `dispatch_task`）。
 
 ## 技能契约
 
@@ -171,7 +171,7 @@ allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 本节是给加载了本 skill 的宿主 Agent 的操作指令。所有路径以 **skill 根目录**（`SKILL.md` 所在目录，下称 `<SKILL_DIR>`）为基准；安装后的目录可能只读，**所有运行时产物必须写在工作目录而非 `<SKILL_DIR>`**。
 
 1. **定位**。确定 `<SKILL_DIR>` 绝对路径，并确定工作目录 `<WORK_DIR>`：优先使用用户指定的目录，否则用当前项目根目录。执行 `node --version` 确认 Node >= 18。
-2. **确认执行方式**。本 skill 不调用任何 CLI：运行 `node <SKILL_DIR>/scripts/run-pipeline.js --dry-run --project-name <项目名>` 只会打印阶段链与提示词配置。正式运行时，编排器把阶段任务正文落成**工单**（`<WORK_DIR>/handoff/orders/<key>.order.md`）并以**退出码 3** 交还执行权；宿主（如 Marvis）用自身派发能力（`dispatch_task` 派子 Agent）执行工单，再用 `node <SKILL_DIR>/scripts/host-queue.js --work-dir <WORK_DIR> submit --file <输出文件>` 回写结果，然后**重跑原命令**继续。全过程零外部进程、零 CLI 依赖。
+2. **确认执行方式**。本 skill 的执行完全基于宿主程序本身：运行 `node <SKILL_DIR>/scripts/run-pipeline.js --dry-run --project-name <项目名>` 只会打印阶段链与提示词配置。正式运行时，编排器把阶段任务正文落成**工单**（`<WORK_DIR>/handoff/orders/<key>.order.md`）并以**退出码 3** 交还执行权；宿主（如 Marvis）用自身派发能力（`dispatch_task` 派子 Agent）执行工单，再用 `node <SKILL_DIR>/scripts/host-queue.js --work-dir <WORK_DIR> submit --file <输出文件>` 回写结果，然后**重跑原命令**继续。全过程不启动任何外部进程，执行能力全部来自宿主程序本身。
 3. **选择入口**。
    - 需求模糊：先 `node <SKILL_DIR>/scripts/req-builder.js --guide` 取得 7 维度引导，收集用户回答后 `--build "<需求文本>"` 生成 A/B 双版本，把两个版本呈现给用户选择，再用 `--select A|B` 写入 `artifacts/00-requirement.md`。可加 `--auto-run --project-name <项目名>` 自动续跑。
    - 新功能需求明确：直接 `node <SKILL_DIR>/scripts/run-pipeline.js --project-name <项目名>`；项目经理会派活并逐阶段验收。
@@ -182,7 +182,7 @@ allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 
 ## 快速开始
 
-前置：Node.js >= 18；无需安装或登录任何 agent CLI。以下命令中 `node scripts/...` 均相对于 `<SKILL_DIR>`；在 skill 目录外执行时换成绝对路径，并用 `--work-dir <WORK_DIR>` 指定产物位置。每条命令只推进一个工单：看到退出码 3 就派子 Agent 执行工单、回写结果、再重跑。
+前置：Node.js >= 18；执行基于宿主程序本身，无需安装或登录额外的命令行工具。以下命令中 `node scripts/...` 均相对于 `<SKILL_DIR>`；在 skill 目录外执行时换成绝对路径，并用 `--work-dir <WORK_DIR>` 指定产物位置。每条命令只推进一个工单：看到退出码 3 就派子 Agent 执行工单、回写结果、再重跑。
 
 ```bash
 # 0. 演练：只打印阶段链与提示词配置，不派发、不落工单
@@ -248,7 +248,6 @@ node scripts/watch-issues.js               # 默认常驻轮询（不带 --once 
 | `--dry-run` | 只打印命令不执行 | false |
 | `--pipeline-config` / `--agents-config` / `--host-config` | 配置路径覆盖 | `config/` 下默认值 |
 | `--host-script <js>` | 用本地 JS 替代宿主派发（进程内 `respond(prompt)` 返回正文），供离线自测 | 无 |
-| `--timeout-ms` | 单阶段执行超时 | `config/host.json` 的 `timeoutMs` |
 
 ## 多平台兼容与安装
 
@@ -281,7 +280,7 @@ node scripts/install.js --platform auto --scope user --link
 node scripts/install.js --platform auto --scope user --uninstall
 ```
 
-各宿主的发现优先级、frontmatter 差异与已知限制见 `references/platform-compat.md`（执行链路与宿主无关，本 skill 不调用任何 CLI）。
+各宿主的发现优先级、frontmatter 差异与已知限制见 `references/platform-compat.md`（执行链路与宿主无关，执行一律基于宿主程序本身）。
 
 ## 宿主派发层
 
@@ -309,7 +308,7 @@ node scripts/host-queue.js --work-dir <WORK_DIR> cancel        # 作废当前待
 
 - **改阶段**：编辑 `config/pipeline.json`，增删 `stages` 项；旧配置中 `confirm: true` 标记人工确认点；`input` 指向前序产物；`output: null` 表示不落盘该阶段 stdout。项目经理模式下专业阶段仍不得跳过。
 - **项目经理模式**：`projectManager.enabled=false` 回退旧人工确认/回炉逻辑；`kickoff` 控制首次派活；`maxReworkRounds` / `maxTotalReworks` 控制返工预算；状态、交接、决策日志、升级包与验收单路径均可配置。
-- **改角色/模型**：编辑 `config/agents.json`；`model` / `fallbackModels` 仅在宿主侧生效（工单里保留偏好声明），宿主模式不做限额换号。
+- **改角色**：编辑 `config/agents.json`，只影响提示词与 `knowledge` / `memory` 开关；阶段执行所用的模型、超时与权限全部由宿主程序决定，本技能不声明也不干预。
 - **改提示词**：编辑 `prompts/*.md`，支持 `{projectName}` / `{projectDir}` / `{userNeed}` 占位符。把同名文件放 `--work-dir` 下可覆盖内置模板，无需改动只读的安装目录。
 - **管知识库与记忆**：`knowledge/<agent-id>.md`、`memory/<agent-id>.md`、`memory/handoffs.md` 均为追加式 Markdown，可随时人工修剪过时条目；知识库跨项目共享用 `--knowledge-dir ~/.agent-pipeline/knowledge`；按角色关闭改 `agents.json` 的 `knowledge` / `memory` 字段；`--no-knowledge` / `--no-memory` / `--no-delegate` 全局关闭对应能力。
 - **换执行宿主**：无需改配置——编排器只出工单，谁来执行由宿主决定；离线自测可用 `--host-script <js>` 注入进程内响应器。
@@ -325,11 +324,11 @@ agent-pipeline/
 ├── config/                  # host / agents / pipeline / issue-pipeline / github 五份配置
 ├── prompts/                 # 14 个提示词模板（项目经理 + 12 个专业阶段）
 ├── references/
-│   ├── platform-compat.md   # 五平台路径、元数据、CLI 差异
+│   ├── platform-compat.md   # 五平台路径、元数据、执行差异
 │   └── remote-confirm.md    # 远程人工决策与旧版确认协议
 └── scripts/
     ├── install.js           # 一键安装到五个宿主
-    ├── version.js           # 版本号管理 CLI（记录问题 / 发版 / 校验 / 盘点）
+    ├── version.js           # 版本号管理脚本（记录问题 / 发版 / 校验 / 盘点）
     ├── run-pipeline.js      # 主编排器
     ├── req-builder.js       # 需求构建器
     ├── init-project.js      # git 拉取项目
@@ -347,9 +346,9 @@ agent-pipeline/
 
 ## 注意事项
 
-1. **执行边界**：编排器不 spawn 任何外部命令，也就不存在 CLI 参数拼装与权限参数；阶段实际权限由宿主派发的子 Agent 决定。
+1. **执行边界**：编排器不启动任何外部进程，执行一律基于宿主程序本身，因此不存在命令行参数拼装与权限参数；阶段实际权限由宿主派发的子 Agent 决定。
 2. **产物上下文**：每阶段自动把 `input` 指定的产物全文拼进 prompt；缺失仅告警不中断。提示词模板要求子 Agent 把文档正文输出到 stdout，由编排器统一落盘，严禁子 Agent 自行写产物文件。
-3. **跨平台**：无 CLI 调用，macOS / Windows / Linux 行为一致，不存在 `.cmd` 包装与 shell 转义问题。
+3. **跨平台**：执行基于宿主程序本身，不依赖任何平台命令行，macOS / Windows / Linux 行为一致，不存在 `.cmd` 包装与 shell 转义问题。
 4. **只读安装目录**：市场安装的 skill 目录可能只读；配置覆盖用 `--work-dir`，不要用编辑安装目录的方式定制。
 5. **退出码**：0 成功；1 配置错误；2 阶段执行失败；3 工单已就绪、等待宿主派发后回写；42 等待人工决策（`HUMAN_DECISION_NEEDED`）或旧配置远程确认（`REMOTE_CONFIRM_NEEDED`）。
 

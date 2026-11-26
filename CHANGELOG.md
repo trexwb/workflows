@@ -95,6 +95,7 @@ node scripts/install.js --platform auto --scope user --force
 - `CONFIG` 装配改走 `hostAdapter.loadConfig(workRoot, config/host.json, { fakeScript, projectName })`；模型候选链在宿主模式恒为单次执行，不再做限额换号
 - `SKILL.md` / `README.md` / `references/platform-compat.md` 全面改写为宿主派发口径：删除适配器对照表、`*_CLI_CMD` 环境变量、`permissions: skip` 等 CLI 专属内容
 - `config/agents.json` 注释改为「model / fallbackModels 仅作工单偏好声明」
+- 全部文档（`SKILL.md` / `README.md` / `meta.json` / `references/*` / `config/host.json` / 脚本注释与运行期文案）统一为「基于宿主程序本身」口径：不再以「不调用 CLI」作为描述主线，改为正面说明阶段执行由宿主程序自身的 Agent 派发能力完成；同步更新 `tests/manager.test.js` 两处文案断言
 
 ### Removed
 
@@ -102,6 +103,9 @@ node scripts/install.js --platform auto --scope user --force
 - 删除 `config/cli.json`：`hostCommands`、`permissions`、CLI 超时配置不再存在
 - 移除 `AGENT_PIPELINE_HOST` / `AGENT_PIPELINE_ADAPTER` / `CODE_BUDDY_CMD` 等 CLI 探测与覆盖变量
 - 移除 Windows `.cmd` 包装器规避逻辑（无外部进程后不再需要）
+- **移除模型维度**：删除模型候选链、`fallbackModels`、`runner.extraModels()`、`supportsFallbackFlag`、`capabilities.model`、`isQuotaError()` 限额换号与 `--timeout-ms`；阶段执行改为严格单次派发，失败即阶段失败
+- 移除 `config/agents.json` 与 `agents.demo.json` 中的 `model` / `fallbackModels` / `tools` / `effort` / `maxTurns` 字段（共 70 处），角色只剩提示词 + `knowledge` / `memory` 开关
+- 移除 `host.json` 与 DEFAULT_CONFIG 中的 `timeoutMs` / `permissions` / `outputFormat`，runner 接口收敛为 `name` / `label` / `probe` / `run`
 
 ### Breaking
 

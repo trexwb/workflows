@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 多 Agent 流水线主编排器（宿主派发版）—— 不调用任何 CLI，由宿主 Agent 派子 Agent 执行阶段
+ * 多 Agent 流水线主编排器（宿主执行版）—— 执行基于宿主程序本身，由宿主 Agent 派子 Agent 执行阶段
  *
  * 用法：
  *   node scripts/run-pipeline.js --project-name demo-app [--dry-run]
@@ -13,7 +13,7 @@
  *
  * 原理：专业阶段的任务正文落成「阶段工单」，进程以退出码 3 交还执行权，宿主用自己的派发能力
  *       （如 Marvis 的 dispatch_task）执行工单并把输出回写，再重跑本命令继续；输出正文 + REPORT，
- *       项目经理派活/验收并输出 DECISION。全过程零外部进程、零 CLI 依赖。
+ *       项目经理派活/验收并输出 DECISION。全过程不启动外部进程，执行能力全部来自宿主程序本身。
  *       编排器执行继续、返工、退回上游、人工升级或最终验收；旧配置回退人工确认/自动回炉。
  *       角色知识库、记忆与动态委托默认开启；项目经理门禁禁止委托。
  * 可移植性：零 npm 依赖；路径全部相对 skill 根或 --work-dir；无平台硬编码；
@@ -97,7 +97,7 @@ function usage() {
   --host-config <p>     宿主派发配置路径，默认 config/host.json
   --host-script <p>     仅测试用：进程内模拟宿主输出（模块导出 respond(prompt)），不产生工单
 
-执行模型（不使用任何 CLI 工具）：
+执行模型（基于宿主程序本身，不依赖任何命令行工具）：
   1. 脚本推进到某阶段，把组装好的完整任务正文写成阶段工单：
        <work-dir>/handoff/orders/<key>.order.md
   2. 进程以退出码 3 退出，交还执行权（工单登记在 <work-dir>/handoff/queue.json）
@@ -116,9 +116,6 @@ function dryRunRunner(reason) {
     placeholder: true,
     reason,
     label: () => '<宿主派发层未初始化>',
-    capabilities: { model: false, agents: false },
-    supportsFallbackFlag: false,
-    extraModels: () => [],
     probe: () => ({ status: 0 }),
     run: () => ({ status: 1, stderr: reason }),
   };
@@ -316,7 +313,7 @@ function main() {
     log(`需求原文已写入 artifacts/00-requirement.md（${reqText.length} 字符）`);
   }
 
-  // ---------- 配置与适配器 ----------
+  // ---------- 配置与宿主执行层 ----------
   let hostCfg, pipeline, agentsConfig, agentsJson;
   try {
     hostCfg = hostAdapter.loadConfig(workRoot, resolveAsset(args['host-config'] || 'config/host.json'), {
@@ -331,8 +328,8 @@ function main() {
   }
   agentsJson = JSON.stringify(agentsConfig.agents);
 
-  // 旧版 pipeline.json 内嵌 cli 块已废弃：host 模式不调用任何 CLI
-  if (pipeline.cli) console.log('提示：pipeline.json 的 cli 配置块已废弃（宿主派发模式不调用 CLI），已被忽略');
+  // 旧版 pipeline.json 内嵌 cli 块已废弃：host 模式的执行基于宿主程序本身
+  if (pipeline.cli) console.log('提示：pipeline.json 的 cli 配置块已废弃（宿主执行模式基于宿主程序本身），已被忽略');
 
   const dryRun = !!args['dry-run'];
   const interactive = !!args['interactive'];
@@ -458,7 +455,7 @@ function main() {
     runner = dryRunRunner(e.message);
   }
 
-  // 执行方式自检：host 模式不调用任何 CLI，只确认工单/结果目录可用
+  // 执行方式自检：host 模式的执行基于宿主程序本身，只确认工单/结果目录可用
   const probe = runner.probe();
   if (runner.placeholder) {
     log(`警告：${runner.reason}；演练模式仅校验阶段与提示词配置`);
@@ -475,7 +472,7 @@ function main() {
         process.exit(1);
       }
     }
-    log(`执行方式：${runner.label()}；工单=${hostCfg.orderAbs}；结果=${hostCfg.resultAbs}`);
+    log(`执行方式：基于宿主程序本身（${runner.label()}）；工单=${hostCfg.orderAbs}；结果=${hostCfg.resultAbs}`);
     log(`提示：阶段就绪时会写工单并以退出码 ${hostAdapter.WAITING_HOST_EXIT} 交还执行权，`
       + '由宿主派发子 Agent，再用 node scripts/host-queue.js submit 回写结果');
   }
@@ -950,66 +947,29 @@ function main() {
       if (knowledgeOn || memoryOn) prompt += contextBlockFor(agentId, stage, { knowledgeOn, memoryOn, delegateOn: delegateOn && opts.allowDelegate !== false });
       if (delegateCtx) prompt += delegateBlock(delegateCtx);
 
-      // 模型候选链：阶段级显式模型 > 代理级模型 > 阶段/代理 fallbackModels > 适配器动态模型 > auto
-      const canModel = !!(runner.capabilities && runner.capabilities.model);
-      const explicitPrimary = (stage.model && stage.model !== 'auto')
-        ? stage.model
-        : ((agentDef.model && agentDef.model !== 'auto') ? agentDef.model : null);
-      const candidates = [];
-      if (explicitPrimary) candidates.push(explicitPrimary);
-      for (const m of [].concat(stage.fallbackModels || [], agentDef.fallbackModels || [])) {
-        if (m && m !== 'auto' && !candidates.includes(m)) candidates.push(m);
-      }
-      if (canModel) {
-        for (const m of runner.extraModels()) {
-          if (m && !candidates.includes(m)) candidates.push(m);
-        }
-        if (candidates.length && !candidates.includes('auto')) candidates.push('auto');
-      }
-      // host 模式不接受模型参数，候选链恒为单次执行，避免同一阶段重复派发
-      const modelList = canModel ? (candidates.length ? candidates : [null]) : [null];
+      // 单次派发：编排器不调用任何模型，无候选链、无限额换号；失败即阶段失败
+      log(`[${stage.id}] ${stage.name}（agent=${agentId}${agentId !== stage.agent ? '(委托)' : ''}@${runner.name}）开始`);
+      log(`[${stage.id}] 执行：${runner.label()}，任务正文 ${prompt.length} 字符`);
 
-      const timeoutMs = hostCfg.timeoutMs || 0;
-      let finalStdout = null;
-      for (let ci = 0; ci < modelList.length; ci++) {
-        const current = modelList[ci];
-        const next = modelList[ci + 1] || null;
-        const fb = runner.supportsFallbackFlag ? next : null;
+      if (dryRun) { log(`[${stage.id}] [演练] 不实际执行`); return { ok: true, dry: true }; }
 
-        log(`[${stage.id}] ${stage.name}（agent=${agentId}${agentId !== stage.agent ? '(委托)' : ''}@${runner.name}）开始${current ? '，模型=' + current : ''}`);
-        log(`[${stage.id}] 执行：${runner.label()}，任务正文 ${prompt.length} 字符`);
+      const result = runner.run({
+        prompt,
+        stageId: stage.id,
+        agentId,
+        agentDef,
+        agentsJson,
+        cwd: projectDir,
+      });
 
-        if (dryRun) { log(`[${stage.id}] [演练] 不实际执行`); return { ok: true, dry: true }; }
-
-        const result = runner.run({
-          prompt,
-          stageId: stage.id,
-          agentId,
-          agentDef,
-          agentsJson,
-          model: current,
-          fallbackModel: fb,
-          cwd: projectDir,
-          timeoutMs,
-          permissions: hostCfg.permissions,
-          outputFormat: hostCfg.outputFormat,
-        });
-
-        const stdout = (result.stdout || '').trim();
-        const stderr = (result.stderr || '').trim();
-        if (result.status === 0) { finalStdout = stdout; break; }
-
-        const errText = `${stderr}\n${stdout}`;
-        const canSwitch = hostAdapter.isQuotaError(errText) && ci < modelList.length - 1;
+      const finalStdout = (result.stdout || '').trim();
+      const stderr = (result.stderr || '').trim();
+      if (result.status !== 0) {
+        const errText = `${stderr}\n${finalStdout}`;
         log(`[${stage.id}] 执行失败：exit=${result.status} signal=${result.signal || '-'}`);
-        if (canSwitch) {
-          log(`[${stage.id}] 检测到模型限额/过载（${current || '默认'}），自动切换候选模型 → ${modelList[ci + 1]}`);
-          if (stderr) log(`[${stage.id}] stderr: ${stderr.slice(0, 1500)}`);
-          continue;
-        }
         if (result.error) log(`[${stage.id}] error: ${result.error.message}`);
         if (stderr) log(`[${stage.id}] stderr: ${stderr.slice(0, 2000)}`);
-        if (stdout) log(`[${stage.id}] stdout 尾部: ${stdout.slice(-2000)}`);
+        if (finalStdout) log(`[${stage.id}] stdout 尾部: ${finalStdout.slice(-2000)}`);
         return { ok: false, errText };
       }
 

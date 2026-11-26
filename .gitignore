@@ -12,6 +12,9 @@ artifacts/*
 logs/*
 !logs/.gitkeep
 
+# 宿主工单流转目录
+handoff/
+
 # watch-issues 状态数据
 data/
 
