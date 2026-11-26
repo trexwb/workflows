@@ -3,11 +3,18 @@
     "name": "{projectName}",
     "dir": "{projectDir}"
   },
-  "cli": {
-    "command": "auto",
-    "timeoutMs": 600000,
-    "permissions": "skip",
-    "outputFormat": "text"
+  "projectManager": {
+    "enabled": true,
+    "agent": "project-manager",
+    "promptFile": "prompts/00-project-manager.md",
+    "kickoff": true,
+    "maxReworkRounds": 2,
+    "maxTotalReworks": 6,
+    "stateFile": "artifacts/pm-project-state.json",
+    "handoffOutput": "artifacts/pm-handoff.md",
+    "decisionLog": "artifacts/pm-decisions.md",
+    "escalationState": "artifacts/pm-escalation.json",
+    "acceptanceOutput": "artifacts/99-acceptance.md"
   },
   "stages": [
     {
@@ -15,16 +22,20 @@
       "name": "产品规划",
       "agent": "product-manager",
       "promptFile": "prompts/01-product-plan.md",
-      "input": ["artifacts/00-requirement.md"],
+      "input": [
+        "artifacts/00-requirement.md"
+      ],
       "output": "artifacts/01-prd.md",
       "confirm": true
     },
     {
       "id": "02-requirements",
       "name": "需求拆解",
-      "agent": "product-manager",
+      "agent": "requirement-analyst",
       "promptFile": "prompts/02-requirements.md",
-      "input": ["artifacts/01-prd.md"],
+      "input": [
+        "artifacts/01-prd.md"
+      ],
       "output": "artifacts/02-tasks.md",
       "confirm": true
     },
@@ -33,7 +44,10 @@
       "name": "架构设计",
       "agent": "architect",
       "promptFile": "prompts/03-architecture.md",
-      "input": ["artifacts/01-prd.md", "artifacts/02-tasks.md"],
+      "input": [
+        "artifacts/01-prd.md",
+        "artifacts/02-tasks.md"
+      ],
       "output": "artifacts/03-architecture.md"
     },
     {
@@ -41,15 +55,20 @@
       "name": "开发编码",
       "agent": "developer",
       "promptFile": "prompts/04-develop.md",
-      "input": ["artifacts/02-tasks.md", "artifacts/03-architecture.md"],
-      "output": null
+      "input": [
+        "artifacts/02-tasks.md",
+        "artifacts/03-architecture.md"
+      ],
+      "output": "artifacts/04-implementation.md"
     },
     {
       "id": "05-code-review",
       "name": "代码审查",
       "agent": "code-reviewer",
       "promptFile": "prompts/05-code-review.md",
-      "input": ["artifacts/03-architecture.md"],
+      "input": [
+        "artifacts/03-architecture.md"
+      ],
       "output": "artifacts/05-review.md"
     },
     {
@@ -57,7 +76,10 @@
       "name": "测试",
       "agent": "tester",
       "promptFile": "prompts/06-test.md",
-      "input": ["artifacts/02-tasks.md", "artifacts/05-review.md"],
+      "input": [
+        "artifacts/02-tasks.md",
+        "artifacts/05-review.md"
+      ],
       "output": "artifacts/06-test-report.md"
     },
     {
@@ -65,9 +87,12 @@
       "name": "部署",
       "agent": "devops",
       "promptFile": "prompts/07-deploy.md",
-      "input": ["artifacts/05-review.md", "artifacts/06-test-report.md"],
-      "output": "artifacts/07-deploy.md",
-      "model": "hy3"
+      "input": [
+        "artifacts/05-review.md",
+        "artifacts/06-test-report.md"
+      ],
+      "output": "artifacts/07-deploy.md"
     }
-  ]
+  ],
+  "_comment": "阶段字段：id/name/agent（对应 agents.json 键）、promptFile（相对 skill 根）、input（前序产物路径列表，缺失仅告警）、output（产物落盘路径，null=不落盘）、model/fallbackModels 可在阶段级覆盖。projectManager 默认启用：项目经理负责派活与逐阶段验收，confirm 字段仅在旧配置回退模式用于人工确认。"
 }
