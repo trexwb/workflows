@@ -1,0 +1,9 @@
+{
+  "_comment": "宿主执行配置：阶段执行基于宿主程序本身。阶段工单写到 orderDir，宿主执行后把输出回写到 resultDir；目录均相对 --work-dir。",
+  "mode": "host",
+  "orderDir": "handoff/orders",
+  "resultDir": "handoff/results",
+  "doneDir": "handoff/done",
+  "queueFile": "handoff/queue.json",
+  "keepDone": 40
+}

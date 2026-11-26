@@ -1,0 +1,21 @@
+{
+  "name": "agent-pipeline",
+  "display_name": "多 Agent 开发流水线",
+  "description": "多 Agent 软件开发流水线编排器：由独立项目经理派活、逐阶段验收、路由返工与升级人工，专业角色按产品规划→需求拆解→架构设计→开发编码→代码审查→测试→部署七阶段交付，并支持五阶段 GitHub Issue 修复循环。专业 REPORT + 项目经理 DECISION 驱动，支持知识库、记忆、动态委托、远程人工恢复与断点续跑。执行完全基于宿主程序本身：编排器只出工单，由宿主自身的 Agent 派发能力执行阶段后回写推进，不依赖任何外部命令行工具；兼容 WorkBuddy / CodeBuddy / zCode / Qoder / Marvis / Claude Code / Codex 及任意 Agent Skills 宿主。",
+  "detail_describe": "把软件开发拆成固定专业阶段，每阶段由独立子 Agent（角色 + 提示词 + 执行约定）执行\n项目经理负责启动任务书、阶段验收、返工/退回上游、最终验收与人工升级，不代替专业角色交付\n专业角色通过 REPORT 反馈证据，项目经理通过 DECISION 控制 PROCEED/REWORK/RETURN_UPSTREAM/ESCALATE/COMPLETE\n阶段间通过 artifacts/ 传递产物，产物与日志只写 --work-dir，不污染只读的 skill 安装目录\n支持人工升级包、--resume-human 恢复、断点续跑与阶段结果缓存重放\n需求构建器提供 7 维度引导与 A/B 双版本需求；Issue 监听器提供自动修复闭环\n一键安装到 WorkBuddy / CodeBuddy / zCode / Marvis / Qoder 的用户级与项目级 skills 目录\n执行完全基于宿主程序本身，零 npm 依赖，跨平台（macOS / Linux / Windows）",
+  "display_description": "项目经理编排与验收的多阶段开发流水线",
+  "author": "trexwb",
+  "version": "2.0.0",
+  "type": "开发工具",
+  "scope": [
+    "main"
+  ],
+  "platforms": [
+    "WorkBuddy",
+    "CodeBuddy",
+    "zCode",
+    "Marvis",
+    "Qoder"
+  ],
+  "source": "https://github.com/trexwb/workflows"
+}
